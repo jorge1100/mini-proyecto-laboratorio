@@ -1,61 +1,183 @@
-# laboratorio-pedidos — proyecto de práctica
+# laboratorio-pedidos
 
 Sistema de gestión de pedidos de un laboratorio de análisis clínicos.
-**PHP Vanilla, sin frameworks, sin Composer.** Corre en XAMPP tal cual está.
+**PHP 8.4 Vanilla, sin frameworks, sin Composer.** Corre en Docker (recomendado)
+o en XAMPP tal cual está.
 
-> ⚠️ **Este proyecto está roto a propósito.**
-> Cada archivo contiene deuda técnica sembrada, marcada con comentarios:
->
-> ```php
-> // ❌ MAL APLICADO: qué método está mal y qué principio viola
-> // ✅ FORMA CORRECTA: qué patrón corresponde y cómo se estructura
-> ```
->
-> El objetivo no es que funcione mejor: ya funciona. El objetivo es que
-> **se pueda cambiar sin miedo**.
+> El proyecto nació con deuda técnica sembrada a propósito (ver
+> `docs/MAPA-DE-DEUDAS.md` y `docs/DEUDA-TECNICA.md`). Parte de esa deuda
+> ya fue pagada aplicando patrones de diseño en ramas dedicadas
+> (`feat/patron-*`). El código que queda con comentarios `❌ MAL APLICADO`
+> es el que todavía está pendiente de refactor.
 
 ---
 
-## Cómo levantarlo
+## 1. Requisitos
+
+- **Docker** 24+ y **Docker Compose** v2 (`docker compose version`), **o**
+- **XAMPP** (Apache + PHP 8.x). MySQL no es obligatorio: la persistencia está
+  simulada en memoria para que el proyecto arranque sin configurar base de datos.
+
+---
+
+## 2. Cómo levantarlo (Docker — recomendado)
+
+```bash
+cd mini-proyecto-laboratorio
+
+# 1. Primera vez (o si cambiaste el Dockerfile)
+docker compose up --build -d
+
+# 2. Ver logs
+docker compose logs -f app
+
+# 3. Abrir en el navegador
+# http://localhost:8080/index.php?accion=crear
+# http://localhost:8080/index.php?accion=listar
+# http://localhost:8080/index.php?accion=reporte
+```
+
+El volumen `./:/var/www/html` hace que cada cambio en tu editor se vea al
+recargar, sin rebuild.
+
+### MySQL (opcional)
+
+El servicio `db` queda levantado y sano para cuando se aplique el Singleton
+con PDO real:
+
+- Host dentro de Docker: `db:3306`
+- Host desde tu PC: `localhost:3307`
+- Usuario: `root` / Clave: `root` / Base: `laboratorio`
+
+Las credenciales salen de `docker-compose.yml → environment:` y se leen en
+`config/database.php` con `getenv()`. Nunca van hardcodeadas en `src/`.
+
+### Apagar / limpiar
+
+```bash
+docker compose down        # apaga y conserva el volumen de MySQL
+docker compose down -v     # apaga y BORRA la base (empezar de cero)
+```
+
+---
+
+## 3. Cómo levantarlo (XAMPP)
 
 1. Copiar la carpeta dentro de `C:\xampp\htdocs\`.
-2. Iniciar Apache desde el panel de XAMPP (MySQL **no** hace falta).
+2. Iniciar Apache desde el panel de XAMPP (MySQL no hace falta).
 3. Abrir: `http://localhost/mini-proyecto-laboratorio/public/index.php`
 
-Acciones disponibles:
+---
+
+## 4. Acciones disponibles
 
 | URL | Qué hace |
 |---|---|
-| `public/index.php?accion=crear` | Crea un pedido pasando por toda la deuda |
+| `public/index.php?accion=crear` | Crea un pedido pasando por toda la lógica |
 | `public/index.php?accion=listar` | Lista pedidos desde la vista |
-| `public/index.php?accion=reporte` | Genera un reporte con banderas booleanas |
-
-La persistencia está simulada en memoria para que el proyecto arranque sin
-configurar MySQL. Eso **no** es parte de la deuda a corregir.
+| `public/index.php?accion=reporte` | Genera un reporte combinando decoradores |
 
 ---
 
-## Mapa de deudas
+## 5. Configuración local (sin credenciales versionadas)
 
-| Archivo | Síntoma sembrado | Patrón / principio | Ejercicio |
+El repositorio versiona `config/database.example.php` con valores vacíos.
+El archivo real `config/database.php` está en `.gitignore` y **nunca** se
+versiona.
+
+```bash
+cp config/database.example.php config/database.php
+# editar config/database.php con los valores de tu entorno
+```
+
+En Docker no hace falta: `config/database.php` se genera a partir de las
+variables de entorno del `docker-compose.yml`.
+
+---
+
+## 6. Estructura del proyecto
+
+```
+mini-proyecto-laboratorio/
+├── config/
+│   ├── database.example.php   (versionado, valores vacíos)
+│   └── database.php           (local, ignorado por git)
+├── public/
+│   ├── index.php              (punto de entrada: autoload + config + rutas)
+│   └── .htaccess
+├── src/
+│   ├── Database/              Connection (Singleton pendiente)
+│   ├── Models/                Order (Repository + Strategy pendientes)
+│   ├── Pricing/               PricingStrategy + estrategias (Strategy aplicado)
+│   ├── Notifications/         Notification + factory (Factory aplicado)
+│   ├── Legacy/                LegacyNotifier + Adapter (Adapter aplicado)
+│   ├── Reports/               Report + decoradores (Decorator aplicado)
+│   ├── Events/                OrderEvents (Observer pendiente)
+│   ├── Services/              OrderService (Facade pendiente)
+│   └── Controllers/           OrderController (MVC pendiente)
+├── views/
+│   └── orders.php
+└── docs/
+    ├── CONSIGNA-TP.md         consigna del TP integrador
+    ├── MAPA-DE-DEUDAS.md      mapa de deudas de la clase práctica
+    ├── DEUDA-TECNICA.md       diagnóstico con evidencia
+    └── DOCKER.md              guía de Docker
+```
+
+---
+
+## 7. Patrones aplicados
+
+| Patrón | Categoría | Dónde | Rama |
 |---|---|---|---|
-| `public/index.php` | Requires manuales, credenciales en el código, ruteo con `if` | Autoload + config externa + tabla de rutas | — |
-| `src/Database/Connection.php` | Una conexión nueva por consulta; excepción silenciada | **Singleton** | — |
-| `src/Notifications/NotificationSender.php` | `if` por tipo repetido en 3 archivos | **Factory** | Ej. 2 |
-| `src/Pricing/PriceCalculator.php` | `switch` con todos los algoritmos + lógica duplicada | **Strategy** | Ej. 1 |
-| `src/Events/OrderEvents.php` | Avisos encadenados a mano a clases concretas | **Observer** | Ej. 5 |
-| `src/Legacy/LegacyNotifier.php` | Clase de terceros modificada + copia y pega | **Adapter** | Ej. 3 |
-| `src/Reports/ReportGenerator.php` | Parámetros booleanos (`boolean trap`) | **Decorator** | Ej. 4 |
-| `src/Services/OrderService.php` | Método que hace de todo | **Facade** + SRP | Ej. 6 |
-| `src/Controllers/OrderController.php` | SQL + negocio + HTML en el controlador | **MVC** + SRP | Ej. 7 |
-| `src/Models/Order.php` | Modelo que se persiste y calcula precios | **Repository** + Strategy | — |
-| `views/orders.php` | Consulta, calcula y no escapa la salida | **MVC** | Ej. 8 |
+| Strategy | Comportamiento | `src/Pricing/*` | `feat/patron-strategy` |
+| Factory Method | Creacional | `src/Notifications/NotificationFactory.php` | `feat/patron-factory` |
+| Decorator | Estructural | `src/Reports/*Decorator.php` | `feat/patron-decorator` |
+| Adapter | Estructural | `src/Legacy/LegacyNotifierAdapter.php` | `feat/patron-adapter` |
+
+Cada patrón tiene su rama y su commit con la convención
+`feat:` / `refactor:`. Ver `docs/DEUDA-TECNICA.md` para la justificación y
+la consecuencia asumida de cada uno.
 
 ---
 
-## La medida de la deuda de este proyecto
+## 8. Historial y flujo de trabajo
 
-El descuento de obra social (**0.7**) está escrito en **cinco archivos distintos**:
+- Nadie escribe directamente en `main`.
+- Una rama por patrón: `feat/patron-<nombre>`.
+- Un PR por rama con las tres preguntas: qué deuda, qué patrón y por qué,
+  qué consecuencia negativa.
+- Cada PR revisado y aprobado por otro integrante.
+
+Convención de commits:
+
+```
+feat:     funcionalidad nueva
+fix:      corrección de un error
+refactor: cambia la estructura sin cambiar el comportamiento
+docs:     documentación
+```
+
+Ejemplo: `refactor(pricing): reemplazar switch por PricingStrategy`.
+
+---
+
+## 9. Troubleshooting
+
+| Síntoma | Causa probable | Fix |
+|---|---|---|
+| `Accion no encontrada` | URL sin `?accion=` | Usá las 3 URLs de la sección 4 |
+| Puerto 8080 ocupado | Otro Apache/XAMPP | Cambiá a `"8081:80"` en `docker-compose.yml` o apagá XAMPP |
+| Cambios no se ven | Navegador cacheó | Recarga fuerte Ctrl+Shift+R |
+| `db` unhealthy | Primera descarga de `mysql:8.0` lenta | Esperá 30s, `docker compose logs db` |
+| Clase no encontrada | Falta el archivo en `src/` | El autoload busca por nombre de clase; verificá el nombre del archivo |
+| Credenciales inválidas | Falta `config/database.php` | Copiá desde `config/database.example.php` |
+
+---
+
+## 10. La medida de la deuda
+
+El descuento de obra social (`0.7`) aparecía en **5 archivos**:
 
 ```
 src/Models/Order.php
@@ -65,35 +187,5 @@ src/Controllers/OrderController.php
 views/orders.php
 ```
 
-Cuando el laboratorio lo cambie al 25%, ese número es exactamente
-cuántos lugares hay que tocar y cuántas oportunidades hay de olvidarse uno.
-
-**Ese es el punto de toda la unidad.**
-
----
-
-## Mecánica de la clase práctica
-
-```
-1. Cada grupo toma UN archivo del mapa de deudas.       (5 min)
-2. Lee los comentarios ❌ y ✅.                          (5 min)
-3. Refactoriza en una rama propia: feat/patron-<nombre>  (20 min)
-4. Abre un Pull Request que responda tres cosas:
-     - qué deuda encontró (con la línea exacta)
-     - qué patrón aplicó y por qué ese y no otro
-     - qué consecuencia negativa tiene su propia solución
-5. Otro grupo revisa el PR y comenta.                    (10 min)
-```
-
-El PR revisado por otro grupo es evidencia del TP Integrador.
-
----
-
-## Reglas del refactor
-
-- **No se rompe funcionalidad.** Antes y después, la app hace lo mismo.
-- **Un patrón por rama.** Nada de una rama con seis cambios mezclados.
-- **Se borra el código viejo.** Dejar el método anterior "por las dudas" es
-  deuda nueva.
-- **Se documenta la consecuencia negativa.** Un patrón sin contras analizadas
-  es sobreingeniería esperando su turno.
+Después del refactor con Strategy, el valor vive en un único lugar:
+`src/Pricing/InsuranceStrategy.php`. Esa diferencia es el trabajo hecho.
