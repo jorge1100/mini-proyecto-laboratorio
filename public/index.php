@@ -5,93 +5,60 @@
  *  Metodología de Sistemas II — UTN FRRe (sede Formosa)
  * ============================================================================
  *
- *  ❌ DEUDA SEMBRADA EN ESTE ARCHIVO
- *     1. Carga manual de dependencias con require (se rompe al agregar clases).
- *     2. Credenciales de base de datos escritas en el código y versionadas.
- *     3. Ruteo resuelto con una cadena de if que crece con cada pantalla.
- *
- *  ✅ FORMA CORRECTA
- *     1. spl_autoload_register() o Composer con PSR-4.
- *     2. Configuración en /config/database.php, fuera del repositorio (.gitignore).
- *     3. Un mapa de rutas (array ruta => callable).
- *
- *  Unidad 1: los puntos 2 y 3 también son deuda de PROCESO, no solo de diseño.
+ *  Carga automática de clases (PSR-4 simplificada para clases sin namespace
+ *  distribuidas en subdirectorios de src/). Configuración externa (sin
+ *  credenciales versionadas). Ruteo por tabla de rutas.
  * ============================================================================
  */
 
-// ⚠️ Carga manual pendiente de autoload (deuda de proceso — Unidad 1).
-//    Al agregar estrategias nuevas, este bloque creció.require_once __DIR__ . '/../src/Database/Connection.php';
-require_once __DIR__ . '/../src/Models/Order.php';
-require_once __DIR__ . '/../src/Pricing/PricingStrategy.php';
-require_once __DIR__ . '/../src/Pricing/PrivatePatientStrategy.php';
-require_once __DIR__ . '/../src/Pricing/InsuranceStrategy.php';
-require_once __DIR__ . '/../src/Pricing/RetiredStrategy.php';
-require_once __DIR__ . '/../src/Pricing/PrepaidStrategy.php';
-require_once __DIR__ . '/../src/Pricing/PriceCalculator.php';
-require_once __DIR__ . '/../src/Notifications/Notification.php';
-require_once __DIR__ . '/../src/Notifications/EmailNotification.php';
-require_once __DIR__ . '/../src/Notifications/SmsNotification.php';
-require_once __DIR__ . '/../src/Notifications/WhatsAppNotification.php';
-require_once __DIR__ . '/../src/Notifications/NotificationFactory.php';
-require_once __DIR__ . '/../src/Notifications/NotificationSender.php';
-require_once __DIR__ . '/../src/Legacy/LegacyNotifier.php';
-require_once __DIR__ . '/../src/Reports/Report.php';
-require_once __DIR__ . '/../src/Reports/BasicReport.php';
-require_once __DIR__ . '/../src/Reports/DigitalSignatureDecorator.php';
-require_once __DIR__ . '/../src/Reports/PdfReportDecorator.php';
-require_once __DIR__ . '/../src/Reports/WatermarkDecorator.php';
-require_once __DIR__ . '/../src/Events/OrderEvents.php';
-require_once __DIR__ . '/../src/Services/OrderService.php';
-require_once __DIR__ . '/../src/Controllers/OrderController.php';
+// 1. Autoload: busca el archivo <Clase>.php dentro de src/ (cualquier subdirectorio).
+spl_autoload_register(function (string $class): void {
+    static $map = null;
+    if ($map === null) {
+        $map = [];
+        $base = __DIR__ . '/../src';
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($base, FilesystemIterator::SKIP_DOTS)
+        );
+        foreach ($iterator as $file) {
+            if ($file->isFile() && $file->getExtension() === 'php') {
+                $map[$file->getBasename('.php')] = $file->getPathname();
+            }
+        }
+    }
+    if (isset($map[$class]) && is_file($map[$class])) {
+        require_once $map[$class];
+    }
+});
 
-/*
- * ✅ FORMA CORRECTA (reemplaza a los 11 require de arriba):
- *
- * spl_autoload_register(function (string $class): void {
- *     $file = __DIR__ . '/../src/' . str_replace('\\', '/', $class) . '.php';
- *     if (is_file($file)) {
- *         require_once $file;
- *     }
- * });
- */
+// 2. Configuración externa: nunca versionada. Si no existe el archivo local,
+//    se usa la plantilla con valores vacíos/default.
+$configFile = __DIR__ . '/../config/database.php';
+if (!is_file($configFile)) {
+    $configFile = __DIR__ . '/../config/database.example.php';
+}
+$config = require $configFile;
 
-// ❌ MAL APLICADO: credenciales en el código fuente y dentro del repositorio.
-//    Si el repo es público, la credencial es pública.
-//    Además, cada integrante edita esta línea => conflicto en cada merge.
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'laboratorio');
-define('DB_USER', 'root');
-define('DB_PASS', '');
+define('DB_HOST', $config['host'] ?? 'localhost');
+define('DB_NAME', $config['name'] ?? 'laboratorio');
+define('DB_USER', $config['user'] ?? 'root');
+define('DB_PASS', $config['pass'] ?? '');
+define('DB_PORT', $config['port'] ?? '3306');
 
-/*
- * ✅ FORMA CORRECTA:
- *   $config = require __DIR__ . '/../config/database.php';   // ignorado por git
- *   El repositorio versiona config/database.example.php con valores vacíos.
- */
+// 3. Controlador y ruteo por tabla de rutas (abierto a extensión).
+$controller = new OrderController();
+
+$rutas = [
+    'crear'   => fn() => $controller->create(),
+    'listar'  => fn() => $controller->index(),
+    'reporte' => fn() => $controller->report(),
+];
 
 $accion = $_GET['accion'] ?? 'crear';
 
-// ❌ MAL APLICADO: ruteo con if encadenados. Viola Abierto/Cerrado:
-//    cada pantalla nueva obliga a MODIFICAR este bloque.
-$controller = new OrderController();
-
-if ($accion === 'crear') {
-    $controller->create();
-} elseif ($accion === 'listar') {
-    $controller->index();
-} elseif ($accion === 'reporte') {
-    $controller->report();
+if (isset($rutas[$accion])) {
+    $rutas[$accion]();
 } else {
+    http_response_code(404);
     echo 'Accion no encontrada';
 }
-
-/*
- * ✅ FORMA CORRECTA: tabla de rutas. Agregar una pantalla ya no modifica el if.
- *
- * $rutas = [
- *     'crear'   => fn() => $controller->create(),
- *     'listar'  => fn() => $controller->index(),
- *     'reporte' => fn() => $controller->report(),
- * ];
- * ($rutas[$accion] ?? fn() => http_response_code(404))();
- */
