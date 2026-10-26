@@ -80,9 +80,12 @@ class OrderService
         $eventos = new OrderEvents();
         $eventos->pedidoCreado($order);
 
-        // ---- 6. Reporte (deberia ser un Decorator) ----
-        $generador = new ReportGenerator();
-        echo $generador->generate("Pedido {$id}", true, true, false) . '<br>';
+        // ---- 6. Reporte (Decorator) ----
+        $reporte = new BasicReport("Pedido {$id}");
+        $reporte = new DigitalSignatureDecorator($reporte);
+        $reporte = new PdfReportDecorator($reporte);
+        $reporte = new WatermarkDecorator($reporte);
+        echo $reporte->generate() . '<br>';
 
         // ---- 7. Presentacion (deberia ser una View) ----
         echo "<p>Pedido {$id} procesado. Total: $ {$total}</p>";
