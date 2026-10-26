@@ -7,6 +7,7 @@
 # Entorno
 .env
 *.log
+docker-compose.override.yml
 
 # Basura del editor y del sistema
 .vscode/

@@ -1,0 +1,6 @@
+RewriteEngine On
+
+# Todo pasa por index.php manteniendo ?accion=crear|listar|reporte
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [QSA,L]

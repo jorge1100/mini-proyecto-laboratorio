@@ -1,0 +1,14 @@
+.git/
+.gitignore
+README.md
+docs/
+docker-compose.override.yml
+*.log
+*final.php
+*_v2.php
+*_backup.php
+/backup/
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

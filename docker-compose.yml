@@ -1,0 +1,53 @@
+services:
+  # App principal: PHP 8.2 + Apache, sirve public/index.php
+  # Todo el proyecto vive en esta misma carpeta (src/, public/, views/, config/, docs/)
+  app:
+    build: .
+    container_name: lab-pedidos-app
+    ports:
+      - "8080:80"
+    volumes:
+      # Montaje en vivo: lo que editás en tu carpeta se refleja sin rebuild.
+      # Ideal para la mecánica de ramas feat/patron-* del TP.
+      - .:/var/www/html
+    environment:
+      DB_HOST: db
+      DB_NAME: laboratorio
+      DB_USER: root
+      DB_PASS: root
+      DB_PORT: 3306
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - lab-net
+
+  # MySQL opcional: el proyecto hoy corre SIN MySQL (persistencia simulada
+  # en memoria en src/Database/Connection.php). Este servicio queda listo
+  # para cuando apliquen el Singleton con PDO real.
+  db:
+    image: mysql:8.0
+    container_name: lab-pedidos-db
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: laboratorio
+    ports:
+      # 3307 en tu PC -> 3306 en el contenedor (3306 suele estar ocupado por XAMPP/MySQL local)
+      - "3307:3306"
+    volumes:
+      - lab-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - lab-net
+
+volumes:
+  lab-db-data:
+
+networks:
+  lab-net:
+    driver: bridge
