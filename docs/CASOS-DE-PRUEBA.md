@@ -1,0 +1,195 @@
+# Casos de prueba — Unidades 4 y 5 (Pruebas + Integración Continua)
+
+**Proyecto:** `laboratorio-pedidos` · **Instancia:** 2° parcial (entrega + defensa)
+**Alcance:** pruebas unitarias sobre el código refactorizado (Strategy, Factory,
+Decorator y Adapter), ejecutables con PHPUnit y validadas en GitHub Actions en
+cada `push` y `pull_request`.
+
+---
+
+## 1. Alcance y enfoque
+
+Se prueban **las cuatro funcionalidades que el grupo ya refactorizó**:
+
+| Funcionalidad | Patrón | Código |
+|---|---|---|
+| Cálculo de precio por tipo de paciente | Strategy | `src/Pricing/*` |
+| Creación y envío de notificaciones | Factory Method | `src/Notifications/*` |
+| Generación y composición de reportes | Decorator | `src/Reports/*` |
+| Adaptación del sistema heredado | Adapter | `src/Legacy/LegacyNotifier.php` |
+
+**Fuera de alcance:** la deuda todavía sembrada (Singleton, Repository,
+Observer, Facade, MVC) y los flujos de HTTP/HTML, que no son código
+refactorizado y requerirían dobles de base de datos y salida web.
+
+Las pruebas son **unitarias**: no usan MySQL, ni servidor de mail, ni el
+navegador. Solo cargan las clases con el autoloader de Composer y verifican el
+comportamiento de cada unidad.
+
+---
+
+## 2. Cómo ejecutar
+
+```bash
+# 1. Instalar dependencias (PHPUnit queda en vendor/)
+composer install
+
+# 2. Lint: verifica la sintaxis de todos los archivos PHP
+composer lint
+
+# 3. Pruebas unitarias
+composer test
+```
+
+Salida esperada al final: `OK (34 tests, 44 assertions)`.
+
+La integración continua ejecuta exactamente los pasos 2 y 3 en GitHub Actions
+(`.github/workflows/ci.yml`) sobre PHP 8.2 y 8.4.
+
+---
+
+## 3. Convenciones
+
+- **Identificador:** `CP-xx` para casos positivos y `CN-xx` para negativos.
+- **Precondiciones:** las mismas para todos: PHP 8.2+, dependencias instaladas
+  con Composer y las clases de `src/` cargadas por el autoloader.
+- **Datos de entrada:** valores concretos, no genéricos.
+- **Resultado esperado:** el valor o la salida exactos que produce el código.
+- Cada caso tiene **un test** en `tests/Unit/`; la trazabilidad está en la
+  sección 6.
+
+---
+
+## 4. Casos de prueba
+
+### F1. Cálculo de precio por tipo de paciente (Strategy)
+
+| ID | Descripción | Precondiciones | Datos de entrada | Pasos | Resultado esperado | Tipo |
+|---|---|---|---|---|---|---|
+| CP-01 | Paciente particular paga el monto completo | Autoloader cargado | `monto = 15000`, `PrivatePatientStrategy` | Instanciar `PriceCalculator` con `PrivatePatientStrategy` y llamar `calculate(15000)` | `15000.0` | Positivo |
+| CP-02 | Obra social aplica 30% de descuento por defecto | Autoloader cargado | `monto = 15000`, `InsuranceStrategy()` | Instanciar `PriceCalculator` con `InsuranceStrategy` y llamar `calculate(15000)` | `10500.0` | Positivo |
+| CP-03 | El descuento de obra social se puede configurar | Autoloader cargado | `monto = 15000`, `InsuranceStrategy(0.25)` | Instanciar con descuento del 25% y llamar `calculate(15000)` | `11250.0` | Positivo |
+| CP-04 | Jubilado aplica 50% de descuento por defecto | Autoloader cargado | `monto = 15000`, `RetiredStrategy()` | Instanciar `PriceCalculator` con `RetiredStrategy` y llamar `calculate(15000)` | `7500.0` | Positivo |
+| CP-05 | Prepaga aplica 15% de descuento por defecto | Autoloader cargado | `monto = 15000`, `PrepaidStrategy()` | Instanciar `PriceCalculator` con `PrepaidStrategy` y llamar `calculate(15000)` | `12750.0` | Positivo |
+| CP-06 | El calculador delega en la estrategia inyectada y no decide el algoritmo | Autoloader cargado | Estrategia de prueba que devuelve `42.0` y registra el monto recibido | Inyectar la estrategia en `PriceCalculator` y llamar `calculate(999)` | La estrategia recibe `999.0`, se marca como llamada y el resultado es `42.0` | Positivo |
+| CN-01 | Monto cero es una frontera válida y no rompe el cálculo | Autoloader cargado | `monto = 0`, `InsuranceStrategy()` | Llamar `calculate(0)` | `0.0` | Negativo (frontera) |
+| CN-02 | Si la estrategia lanza, el calculador propaga la excepción | Autoloader cargado | Estrategia que lanza `RuntimeException('La estrategia fallo')` | Lanzar `calculate(1000)` | Se propaga `RuntimeException` con el mensaje `La estrategia fallo` | Negativo |
+
+### F2. Cálculo con IVA (PriceCalculator)
+
+| ID | Descripción | Precondiciones | Datos de entrada | Pasos | Resultado esperado | Tipo |
+|---|---|---|---|---|---|---|
+| CP-07 | El IVA por defecto (21%) se aplica sobre el total ya descontado | Autoloader cargado | `monto = 15000`, `InsuranceStrategy()`, `vat = 1.21` | Llamar `calculateWithVat(15000)` | `12705.0` (10500 × 1.21) | Positivo |
+| CP-08 | Se puede indicar una tasa de IVA distinta | Autoloader cargado | `monto = 15000`, `PrivatePatientStrategy()`, `vat = 1.10` | Llamar `calculateWithVat(15000, 1.10)` | `16500.0` | Positivo |
+| CN-03 | Si la estrategia lanza, `calculateWithVat` también propaga | Autoloader cargado | Estrategia que lanza `RuntimeException('La estrategia fallo')` | Llamar `calculateWithVat(1000)` | Se propaga `RuntimeException` con el mensaje `La estrategia fallo` | Negativo |
+
+### F3. Creación de notificaciones (Factory)
+
+| ID | Descripción | Precondiciones | Datos de entrada | Pasos | Resultado esperado | Tipo |
+|---|---|---|---|---|---|---|
+| CP-09 | Crea una notificación de email | Autoloader cargado | `type = 'email'`, `destination = 'paciente@mail.com'` | Llamar `NotificationFactory::create('email', 'paciente@mail.com')` | Instancia de `EmailNotification` | Positivo |
+| CP-10 | Crea una notificación de SMS | Autoloader cargado | `type = 'sms'`, `destination = '3704000000'` | Llamar `NotificationFactory::create('sms', '3704000000')` | Instancia de `SmsNotification` | Positivo |
+| CP-11 | Crea una notificación de WhatsApp | Autoloader cargado | `type = 'whatsapp'`, `destination = '3704000000'` | Llamar `NotificationFactory::create('whatsapp', '3704000000')` | Instancia de `WhatsAppNotification` | Positivo |
+| CN-04 | Rechaza un tipo de canal inexistente | Autoloader cargado | `type = 'telegram'` | Llamar `NotificationFactory::create('telegram', 'destino')` | `InvalidArgumentException` con el mensaje `Tipo de notificacion no soportado: telegram` | Negativo |
+| CN-05 | Rechaza un tipo de canal vacío | Autoloader cargado | `type = ''` | Llamar `NotificationFactory::create('', 'destino')` | `InvalidArgumentException` | Negativo |
+| CN-06 | El tipo es sensible a mayúsculas | Autoloader cargado | `type = 'Email'` | Llamar `NotificationFactory::create('Email', 'destino')` | `InvalidArgumentException` | Negativo |
+
+### F4. Envío de notificaciones (NotificationSender)
+
+| ID | Descripción | Precondiciones | Datos de entrada | Pasos | Resultado esperado | Tipo |
+|---|---|---|---|---|---|---|
+| CP-12 | Envía por email con el formato del canal | Autoloader cargado | `tipo = 'email'`, `destino = 'paciente@mail.com'`, `mensaje = 'Pedido 1 creado'` | Llamar `enviar(...)` y capturar la salida | `[EMAIL] para paciente@mail.com: Pedido 1 creado<br>` | Positivo |
+| CP-13 | Envía por SMS con el formato del canal | Autoloader cargado | `tipo = 'sms'`, `destino = '3704000000'`, `mensaje = 'Pedido 1 creado'` | Llamar `enviar(...)` y capturar la salida | `[SMS] a 3704000000: Pedido 1 creado<br>` | Positivo |
+| CP-14 | Envía por WhatsApp con el formato del canal | Autoloader cargado | `tipo = 'whatsapp'`, `destino = '3704000000'`, `mensaje = 'Pedido 1 creado'` | Llamar `enviar(...)` y capturar la salida | `[WHATSAPP] a 3704000000: Pedido 1 creado<br>` | Positivo |
+| CN-07 | Un canal no soportado no se traga en silencio | Autoloader cargado | `tipo = 'telegram'`, `destino = 'destino'`, `mensaje = 'Pedido 1 creado'` | Llamar `enviar(...)` | Se propaga `InvalidArgumentException` de la fábrica | Negativo |
+
+### F5. Generación y composición de reportes (Decorator)
+
+| ID | Descripción | Precondiciones | Datos de entrada | Pasos | Resultado esperado | Tipo |
+|---|---|---|---|---|---|---|
+| CP-15 | El reporte base genera solo el contenido | Autoloader cargado | `contenido = 'Pedidos del dia'` | Llamar `generate()` sobre `BasicReport` | `Reporte: Pedidos del dia` | Positivo |
+| CP-16 | El decorador de firma digital agrega su sufijo | Autoloader cargado | `BasicReport('Pedidos del dia')` | Envolver con `DigitalSignatureDecorator` y llamar `generate()` | `Reporte: Pedidos del dia + firma digital` | Positivo |
+| CP-17 | El decorador de PDF agrega su marca | Autoloader cargado | `BasicReport('Pedidos del dia')` | Envolver con `PdfReportDecorator` y llamar `generate()` | `Reporte: Pedidos del dia + PDF` | Positivo |
+| CP-18 | El decorador de marca de agua agrega su sufijo | Autoloader cargado | `BasicReport('Pedidos del dia')` | Envolver con `WatermarkDecorator` y llamar `generate()` | `Reporte: Pedidos del dia + marca de agua` | Positivo |
+| CP-19 | Se pueden combinar los tres decoradores | Autoloader cargado | `BasicReport('Pedidos del dia')` | Envolver en orden firma → PDF → marca de agua y llamar `generate()` | `Reporte: Pedidos del dia + firma digital + PDF + marca de agua` | Positivo |
+| CP-20 | El orden de encadenado define el resultado | Autoloader cargado | `BasicReport('Pedidos del dia')` | Envolver en orden marca de agua → PDF y llamar `generate()` | `Reporte: Pedidos del dia + marca de agua + PDF` | Positivo |
+| CN-08 | Rechaza una dependencia que no cumple el contrato `Report` | Autoloader cargado | Objeto `stdClass` como reporte interno | Instanciar `DigitalSignatureDecorator(new stdClass())` | `TypeError` | Negativo |
+| CN-09 | Si el reporte interno lanza, el decorador propaga | Autoloader cargado | `Report` cuyo `generate()` lanza `RuntimeException('El reporte interno fallo')` | Envolver con `DigitalSignatureDecorator` y llamar `generate()` | Se propaga `RuntimeException` con el mensaje `El reporte interno fallo` | Negativo |
+
+### F6. Adaptación del sistema heredado (Adapter)
+
+| ID | Descripción | Precondiciones | Datos de entrada | Pasos | Resultado esperado | Tipo |
+|---|---|---|---|---|---|---|
+| CP-21 | El adaptador cumple el contrato `Notification` | Autoloader cargado | `LegacyNotifier` real | Instanciar `LegacyNotifierAdapter(new LegacyNotifier())` | `instanceof Notification` es `true` | Positivo |
+| CP-22 | El adaptador delega en `sendMessage()` del heredado | Autoloader cargado | `LegacyNotifier` espía que registra los mensajes | Llamar `send('Pedido 1 creado')` | El espía recibe exactamente `['Pedido 1 creado']` | Positivo |
+| CP-23 | La salida mantiene el formato del proveedor | Autoloader cargado | `LegacyNotifier` real, mensaje `Pedido 1 creado` | Llamar `send(...)` y capturar la salida | `[LEGACY] Pedido 1 creado<br>` | Positivo |
+| CN-10 | Si el proveedor lanza, el adaptador propaga | Autoloader cargado | `LegacyNotifier` que lanza `RuntimeException('El proveedor esta caido')` | Llamar `send('Pedido 1 creado')` | Se propaga `RuntimeException` con el mensaje `El proveedor esta caido` | Negativo |
+| CN-11 | Rechaza una dependencia que no es `LegacyNotifier` | Autoloader cargado | Objeto `stdClass` | Instanciar `LegacyNotifierAdapter(new stdClass())` | `TypeError` | Negativo |
+
+---
+
+## 5. Resumen por funcionalidad
+
+| Funcionalidad | Positivos | Negativos | Tests |
+|---|---|---|---|
+| F1. Precio por tipo de paciente (Strategy) | 6 | 2 | 8 |
+| F2. Cálculo con IVA | 2 | 1 | 3 |
+| F3. Creación de notificaciones (Factory) | 3 | 3 | 4 |
+| F4. Envío de notificaciones (Sender) | 3 | 1 | 4 |
+| F5. Reportes y decoradores (Decorator) | 6 | 2 | 8 |
+| F6. Adaptación del heredado (Adapter) | 3 | 2 | 5 |
+| **Total** | **23** | **11** | **34** |
+
+---
+
+## 6. Trazabilidad caso ↔ test
+
+| ID | Test (`tests/Unit/...`) |
+|---|---|
+| CP-01 | `Pricing/PriceCalculatorTest::testPrivatePatientPaysFullAmount` |
+| CP-02 | `Pricing/PriceCalculatorTest::testInsuranceAppliesDefault30PercentDiscount` |
+| CP-03 | `Pricing/PriceCalculatorTest::testInsuranceAcceptsCustomDiscount` |
+| CP-04 | `Pricing/PriceCalculatorTest::testRetiredAppliesDefault50PercentDiscount` |
+| CP-05 | `Pricing/PriceCalculatorTest::testPrepaidAppliesDefault15PercentDiscount` |
+| CP-06 | `Pricing/PriceCalculatorTest::testPriceCalculatorDelegatesToInjectedStrategy` |
+| CN-01 | `Pricing/PriceCalculatorTest::testZeroAmountReturnsZero` |
+| CN-02 | `Pricing/PriceCalculatorTest::testCalculatePropagatesStrategyException` |
+| CP-07 | `Pricing/PriceCalculatorTest::testCalculateWithVatAppliesDefaultVatOverDiscountedTotal` |
+| CP-08 | `Pricing/PriceCalculatorTest::testCalculateWithVatAcceptsCustomRate` |
+| CN-03 | `Pricing/PriceCalculatorTest::testCalculateWithVatPropagatesStrategyException` |
+| CP-09 | `Notifications/NotificationFactoryTest::testCreatesEmailNotification` |
+| CP-10 | `Notifications/NotificationFactoryTest::testCreatesSmsNotification` |
+| CP-11 | `Notifications/NotificationFactoryTest::testCreatesWhatsAppNotification` |
+| CN-04 | `Notifications/NotificationFactoryTest::testThrowsOnUnsupportedType` (data set `tipo inexistente`) |
+| CN-05 | `Notifications/NotificationFactoryTest::testThrowsOnUnsupportedType` (data set `tipo vacio`) |
+| CN-06 | `Notifications/NotificationFactoryTest::testThrowsOnUnsupportedType` (data set `tipo en mayusculas`) |
+| CN-07 | `Notifications/NotificationSenderTest::testPropagatesFactoryExceptionForUnsupportedType` |
+| CP-12 | `Notifications/NotificationSenderTest::testSendsEmailThroughFactory` |
+| CP-13 | `Notifications/NotificationSenderTest::testSendsSmsThroughFactory` |
+| CP-14 | `Notifications/NotificationSenderTest::testSendsWhatsAppThroughFactory` |
+| CP-15 | `Reports/ReportDecoratorTest::testBasicReportGeneratesBaseContent` |
+| CP-16 | `Reports/ReportDecoratorTest::testDigitalSignatureAppendsSignature` |
+| CP-17 | `Reports/ReportDecoratorTest::testPdfAppendsPdfMark` |
+| CP-18 | `Reports/ReportDecoratorTest::testWatermarkAppendsWatermark` |
+| CP-19 | `Reports/ReportDecoratorTest::testDecoratorsCanBeCombined` |
+| CP-20 | `Reports/ReportDecoratorTest::testDecoratorOrderChangesResult` |
+| CN-08 | `Reports/ReportDecoratorTest::testDecoratorRejectsDependencyThatIsNotAReport` |
+| CN-09 | `Reports/ReportDecoratorTest::testDecoratorPropagatesInnerReportException` |
+| CP-21 | `Legacy/LegacyNotifierAdapterTest::testAdapterImplementsNotificationContract` |
+| CP-22 | `Legacy/LegacyNotifierAdapterTest::testAdapterDelegatesToLegacySendMessage` |
+| CP-23 | `Legacy/LegacyNotifierAdapterTest::testAdapterOutputsLegacyFormat` |
+| CN-10 | `Legacy/LegacyNotifierAdapterTest::testAdapterPropagatesLegacyException` |
+| CN-11 | `Legacy/LegacyNotifierAdapterTest::testAdapterRejectsDependencyThatIsNotLegacyNotifier` |
+
+---
+
+## 7. Integración continua
+
+`.github/workflows/ci.yml` se ejecuta en **cada `push` y en cada `pull_request`**,
+en PHP 8.2 y 8.4, con tres pasos:
+
+1. **Instalar dependencias:** `composer install --no-interaction --prefer-dist`.
+2. **Lint:** `composer lint` → `php -l` sobre `src/`, `tests/` y `public/`.
+3. **Pruebas:** `composer test` → `phpunit`.
+
+Si algún paso falla, el workflow queda en rojo y el PR no se puede mergear.

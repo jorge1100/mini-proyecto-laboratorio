@@ -4,6 +4,10 @@
 # Dependencias
 /vendor/
 
+# Cache de PHPUnit
+/.phpunit.cache/
+/.phpunit.result.cache
+
 # Entorno
 .env
 *.log

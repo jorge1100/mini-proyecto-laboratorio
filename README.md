@@ -1,8 +1,11 @@
 # laboratorio-pedidos
 
+![CI](https://github.com/jorge1100/mini-proyecto-laboratorio/actions/workflows/ci.yml/badge.svg)
+
 Sistema de gestión de pedidos de un laboratorio de análisis clínicos.
-**PHP 8.4 Vanilla, sin frameworks, sin Composer.** Corre en Docker (recomendado)
-o en XAMPP tal cual está.
+**PHP 8.2+ Vanilla, sin frameworks.** Corre en Docker (recomendado)
+o en XAMPP tal cual está. Composer se usa solo para las dependencias de
+desarrollo (PHPUnit).
 
 > El proyecto nació con deuda técnica sembrada a propósito (ver
 > `docs/MAPA-DE-DEUDAS.md` y `docs/DEUDA-TECNICA.md`). Parte de esa deuda
@@ -17,6 +20,7 @@ o en XAMPP tal cual está.
 - **Docker** 24+ y **Docker Compose** v2 (`docker compose version`), **o**
 - **XAMPP** (Apache + PHP 8.x). MySQL no es obligatorio: la persistencia está
   simulada en memoria para que el proyecto arranque sin configurar base de datos.
+- **Composer** 2.x, solo para instalar PHPUnit y correr las pruebas.
 
 ---
 
@@ -79,7 +83,27 @@ docker compose down -v     # apaga y BORRA la base (empezar de cero)
 
 ---
 
-## 5. Configuración local (sin credenciales versionadas)
+## 5. Pruebas unitarias e integración continua
+
+Las pruebas cubren el código refactorizado (Strategy, Factory, Decorator y
+Adapter) y corren con PHPUnit. No necesitan MySQL ni servidor de mail.
+
+```bash
+composer install     # instala PHPUnit en vendor/
+composer lint        # php -l en src/, tests/ y public/
+composer test        # ejecuta la suite con PHPUnit
+```
+
+Los casos de prueba documentados (identificador, precondiciones, datos de
+entrada, pasos y resultado esperado) están en `docs/CASOS-DE-PRUEBA.md`.
+
+Cada `push` y cada Pull Request disparan el workflow de GitHub Actions
+(`.github/workflows/ci.yml`), que en PHP 8.2 y 8.4 instala dependencias,
+corre el lint y ejecuta las pruebas.
+
+---
+
+## 6. Configuración local (sin credenciales versionadas)
 
 El repositorio versiona `config/database.example.php` con valores vacíos.
 El archivo real `config/database.php` está en `.gitignore` y **nunca** se
@@ -95,10 +119,12 @@ variables de entorno del `docker-compose.yml`.
 
 ---
 
-## 6. Estructura del proyecto
+## 7. Estructura del proyecto
 
 ```
 mini-proyecto-laboratorio/
+├── composer.json              dependencias de desarrollo (PHPUnit)
+├── phpunit.xml                configuración de la suite
 ├── config/
 │   ├── database.example.php   (versionado, valores vacíos)
 │   └── database.php           (local, ignorado por git)
@@ -115,18 +141,24 @@ mini-proyecto-laboratorio/
 │   ├── Events/                OrderEvents (Observer pendiente)
 │   ├── Services/              OrderService (Facade pendiente)
 │   └── Controllers/           OrderController (MVC pendiente)
+├── tests/
+│   └── Unit/                  pruebas de Strategy, Factory, Decorator y Adapter
 ├── views/
 │   └── orders.php
-└── docs/
-    ├── CONSIGNA-TP.md         consigna del TP integrador
-    ├── MAPA-DE-DEUDAS.md      mapa de deudas de la clase práctica
-    ├── DEUDA-TECNICA.md       diagnóstico con evidencia
-    └── DOCKER.md              guía de Docker
+├── docs/
+│   ├── CONSIGNA-TP.md         consigna del TP integrador
+│   ├── MAPA-DE-DEUDAS.md      mapa de deudas de la clase práctica
+│   ├── DEUDA-TECNICA.md       diagnóstico con evidencia
+│   ├── CASOS-DE-PRUEBA.md     casos de prueba documentados
+│   └── DOCKER.md              guía de Docker
+└── .github/
+    ├── PULL_REQUEST_TEMPLATE.md
+    └── workflows/ci.yml       integración continua (lint + pruebas)
 ```
 
 ---
 
-## 7. Patrones aplicados
+## 8. Patrones aplicados
 
 | Patrón | Categoría | Dónde | Rama |
 |---|---|---|---|
@@ -139,9 +171,12 @@ Cada patrón tiene su rama y su commit con la convención
 `feat:` / `refactor:`. Ver `docs/DEUDA-TECNICA.md` para la justificación y
 la consecuencia asumida de cada uno.
 
+Los cuatro patrones tienen su suite de pruebas en `tests/Unit/`; la
+trazabilidad caso ↔ test está en `docs/CASOS-DE-PRUEBA.md`.
+
 ---
 
-## 8. Historial y flujo de trabajo
+## 9. Historial y flujo de trabajo
 
 - Nadie escribe directamente en `main`.
 - Una rama por patrón: `feat/patron-<nombre>`.
@@ -162,7 +197,7 @@ Ejemplo: `refactor(pricing): reemplazar switch por PricingStrategy`.
 
 ---
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 | Síntoma | Causa probable | Fix |
 |---|---|---|
@@ -171,11 +206,12 @@ Ejemplo: `refactor(pricing): reemplazar switch por PricingStrategy`.
 | Cambios no se ven | Navegador cacheó | Recarga fuerte Ctrl+Shift+R |
 | `db` unhealthy | Primera descarga de `mysql:8.0` lenta | Esperá 30s, `docker compose logs db` |
 | Clase no encontrada | Falta el archivo en `src/` | El autoload busca por nombre de clase; verificá el nombre del archivo |
+| `vendor/bin/phpunit` no existe | No se corrió `composer install` | Ejecutá `composer install` |
 | Credenciales inválidas | Falta `config/database.php` | Copiá desde `config/database.example.php` |
 
 ---
 
-## 10. La medida de la deuda
+## 11. La medida de la deuda
 
 El descuento de obra social (`0.7`) aparecía en **5 archivos**:
 

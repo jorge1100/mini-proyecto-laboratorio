@@ -1,0 +1,28 @@
+{
+    "name": "lab/mini-proyecto-laboratorio",
+    "description": "Sistema de gestion de pedidos de un laboratorio de analisis clinicos (Metodologia de Sistemas II - UTN FRRe).",
+    "type": "project",
+    "require": {
+        "php": ">=8.2"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.0"
+    },
+    "autoload": {
+        "classmap": [
+            "src/"
+        ]
+    },
+    "autoload-dev": {
+        "classmap": [
+            "tests/"
+        ]
+    },
+    "scripts": {
+        "lint": "find src tests public -type f -name '*.php' -print0 | xargs -0 -n1 -r php -l",
+        "test": "phpunit --colors=never"
+    },
+    "config": {
+        "optimize-autoloader": true
+    }
+}
