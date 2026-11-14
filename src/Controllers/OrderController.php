@@ -3,55 +3,62 @@
 /**
  * Controlador de pedidos.
  *
- * Recibe la entrada, la delega en la fachada y muestra el resultado.
- * La lógica de negocio vive en la fachada y sus servicios.
+ * Recibe la entrada, se la delega en la fachada y elige qué vista renderizar.
+ * NO contiene SQL, ni reglas de negocio, ni HTML.
  */
-class OrderController
+final class OrderController
 {
-    public function __construct(private OrderFacade $facade) {}
+    public function __construct(
+        private OrderFacade $facade,
+        private OrderRepository $repository,
+        private View $view,
+        private ReportBuilder $reports
+    ) {}
 
     /**
      * Crea un pedido a partir de los parámetros de la URL.
      */
-    public function create(): void
+    public function create(): string
     {
         try {
-            $order = new Order(
-                (int) ($_GET['id'] ?? 1),
-                (string) ($_GET['paciente'] ?? 'Juan Perez'),
-                (float) ($_GET['monto'] ?? 15000),
-                (string) ($_GET['tipo'] ?? 'obra_social')
-            );
-
+            $order = $this->orderFromRequest();
             $total = $this->facade->procesarPedidoCompleto($order);
         } catch (InvalidArgumentException $e) {
-            echo "Pedido rechazado: {$e->getMessage()}";
-            return;
+            return $this->view->render('error', ['mensaje' => $e->getMessage()]);
         }
 
-        echo "<h1>Pedido creado</h1>";
-        echo "<p>Paciente: {$order->patient}</p>";
-        echo "<p>Total: $ {$total}</p>";
+        return $this->view->render('pedido-creado', [
+            'pedido' => ['id' => $order->id, 'patient' => $order->patient, 'total' => $total],
+            'reporte' => $this->reports->build("Pedido {$order->id}")->generate(),
+        ]);
     }
 
     /**
      * Lista los pedidos.
      */
-    public function index(): void
+    public function index(): string
     {
-        require __DIR__ . '/../../views/orders.php';
+        return $this->view->render('orders', ['pedidos' => $this->repository->all()]);
     }
 
     /**
      * Genera el reporte del día combinando decoradores.
      */
-    public function report(): void
+    public function report(): string
     {
-        $reporte = new BasicReport('Pedidos del dia');
-        $reporte = new DigitalSignatureDecorator($reporte);
-        $reporte = new PdfReportDecorator($reporte);
-        $reporte = new WatermarkDecorator($reporte);
+        return $this->reports->build('Pedidos del dia')->generate();
+    }
 
-        echo $reporte->generate();
+    /**
+     * Arma el pedido con los parámetros de la URL.
+     */
+    private function orderFromRequest(): Order
+    {
+        return new Order(
+            (int) ($_GET['id'] ?? 1),
+            (string) ($_GET['paciente'] ?? 'Juan Perez'),
+            (float) ($_GET['monto'] ?? 15000),
+            (string) ($_GET['tipo'] ?? 'obra_social')
+        );
     }
 }

@@ -52,7 +52,10 @@ $facade = new OrderFacade(
 // Datos de demostración (mismo camino que un pedido real).
 (new DemoOrderSeeder($repository, $calculators))->seed();
 
-$controller = new OrderController($facade);
+// Presentación: el controlador devuelve HTML, el punto de entrada lo muestra.
+$view = new View(__DIR__ . '/../views');
+
+$controller = new OrderController($facade, $repository, $view, new ReportBuilder());
 
 $rutas = [
     'crear'   => fn() => $controller->create(),
@@ -63,7 +66,7 @@ $rutas = [
 $accion = $_GET['accion'] ?? 'crear';
 
 if (isset($rutas[$accion])) {
-    $rutas[$accion]();
+    echo $rutas[$accion]();
 } else {
     http_response_code(404);
     echo 'Accion no encontrada';
