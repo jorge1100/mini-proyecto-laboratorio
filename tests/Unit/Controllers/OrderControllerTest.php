@@ -58,7 +58,7 @@ final class OrderControllerTest extends TestCase
 
     public function testIndexReturnsTheOrdersTable(): void
     {
-        $repository = new OrderRepository(Connection::obtener());
+        $repository = new OrderRepository(Connection::getInstance());
         (new DemoOrderSeeder($repository, new PriceCalculatorFactory()))->seed();
 
         $html = $this->controller($repository)->index();
@@ -80,7 +80,7 @@ final class OrderControllerTest extends TestCase
 
     private function controller(?OrderRepository $repository = null): OrderController
     {
-        $repository ??= new OrderRepository(Connection::obtener());
+        $repository ??= new OrderRepository(Connection::getInstance());
 
         return new OrderController(
             new OrderFacade(

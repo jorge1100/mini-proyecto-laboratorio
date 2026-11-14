@@ -31,7 +31,7 @@ define('DB_PORT', $config['port'] ?? '3306');
 
 // 3. Composición: se arman las dependencias y se inyectan.
 //    El punto de entrada es el único lugar que conoce las clases concretas.
-$conexion   = Connection::obtener();
+$conexion   = Connection::getInstance();
 $repository = new OrderRepository($conexion);
 $calculators = new PriceCalculatorFactory();
 

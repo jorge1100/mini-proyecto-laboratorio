@@ -24,7 +24,7 @@ final class OrderFacadeTest extends TestCase
 
     public function testSavesTheOrderWithTheCalculatedTotal(): void
     {
-        $repository = new OrderRepository(Connection::obtener());
+        $repository = new OrderRepository(Connection::getInstance());
         $facade = $this->facade($repository);
 
         $facade->procesarPedidoCompleto(new Order(5, 'Ana Gomez', 22000.0, 'particular'));
@@ -72,7 +72,7 @@ final class OrderFacadeTest extends TestCase
 
     public function testRejectsAnUnsupportedTypeAndDoesNotSaveTheOrder(): void
     {
-        $repository = new OrderRepository(Connection::obtener());
+        $repository = new OrderRepository(Connection::getInstance());
         $facade = $this->facade($repository);
 
         try {
@@ -111,7 +111,7 @@ final class OrderFacadeTest extends TestCase
     ): OrderFacade {
         return new OrderFacade(
             new PriceCalculatorFactory(),
-            $repository ?? new OrderRepository(Connection::obtener()),
+            $repository ?? new OrderRepository(Connection::getInstance()),
             $events ?? new OrderSubject(),
             new NotificationSender(),
             'email',

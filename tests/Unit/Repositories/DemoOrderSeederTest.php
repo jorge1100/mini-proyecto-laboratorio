@@ -12,7 +12,7 @@ final class DemoOrderSeederTest extends TestCase
 {
     public function testSeedsTwoOrdersWithTheTotalsFromTheStrategies(): void
     {
-        $repository = new OrderRepository(Connection::obtener());
+        $repository = new OrderRepository(Connection::getInstance());
 
         (new DemoOrderSeeder($repository, new PriceCalculatorFactory()))->seed();
 

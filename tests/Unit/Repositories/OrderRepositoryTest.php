@@ -12,7 +12,7 @@ final class OrderRepositoryTest extends TestCase
 {
     public function testSavesAndReturnsTheOrderWithItsTotal(): void
     {
-        $repository = new OrderRepository(Connection::obtener());
+        $repository = new OrderRepository(Connection::getInstance());
 
         $repository->save(new Order(5, 'Ana Gomez', 22000.0, 'particular'), 22000.0);
 
@@ -26,7 +26,7 @@ final class OrderRepositoryTest extends TestCase
 
     public function testAllReturnsEverySavedOrder(): void
     {
-        $repository = new OrderRepository(Connection::obtener());
+        $repository = new OrderRepository(Connection::getInstance());
 
         $repository->save(new Order(1, 'Juan Perez', 15000.0, 'obra_social'), 10500.0);
         $repository->save(new Order(2, 'Ana Gomez', 22000.0, 'particular'), 22000.0);
@@ -37,21 +37,21 @@ final class OrderRepositoryTest extends TestCase
 
     public function testReturnsNullForAnUnknownId(): void
     {
-        $repository = new OrderRepository(Connection::obtener());
+        $repository = new OrderRepository(Connection::getInstance());
 
         self::assertNull($repository->find(999));
     }
 
     public function testReturnsEmptyListWhenNothingWasSaved(): void
     {
-        $repository = new OrderRepository(Connection::obtener());
+        $repository = new OrderRepository(Connection::getInstance());
 
         self::assertSame([], $repository->all());
     }
 
     public function testEscapesQuotesInThePatientName(): void
     {
-        $connection = Connection::obtener();
+        $connection = Connection::getInstance();
         $repository = new OrderRepository($connection);
 
         $repository->save(new Order(9, "O'Neil", 1000.0, 'particular'), 1000.0);

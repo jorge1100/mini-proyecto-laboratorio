@@ -1,79 +1,72 @@
 <?php
+
 /**
  * ============================================================================
  *  CONEXION A LA BASE DE DATOS
- *  Patron esperado: SINGLETON (creacional)
+ *  Patrón aplicado: SINGLETON (creacional)
  * ============================================================================
  *
- *  ❌ DEUDA SEMBRADA
- *     1. obtener() crea una conexion NUEVA en cada llamada.
- *     2. Las credenciales llegan por constantes globales definidas en index.php.
- *     3. La excepcion se traga en silencio y el sistema sigue como si nada.
+ *  El constructor es PRIVADO a propósito: nadie puede hacer `new Connection()`
+ *  desde afuera y romper la garantía de instancia única. Para obtener la
+ *  conexión se usa `Connection::getInstance()`.
  *
- *  ✅ FORMA CORRECTA
- *     1. Singleton: constructor privado + instancia estatica + getInstance().
- *     2. La configuracion se inyecta, no se lee de constantes globales.
- *     3. Si la conexion falla, el error se propaga: fallar rapido y fuerte.
+ *  La configuración se inyecta, no se lee de constantes globales, y si una
+ *  consulta falla, el error se propaga: fallar rápido y fuerte.
  *
- *  ⚠️ Advertencia de la clase: Singleton sirve para conexion, logger y
- *     configuracion. NO para guardar el pedido actual ni el usuario logueado.
- *     Ahi deja de ser un patron y pasa a ser una variable global disfrazada.
- * ============================================================================
+ *  ⚠️ El Singleton sirve para conexión, logger y configuración. NO para
+ *     guardar el pedido actual ni el usuario logueado: ahí deja de ser un
+ *     patrón y pasa a ser una variable global disfrazada.
  */
-
-class Connection
+final class Connection
 {
-    /** Almacen en memoria para poder correr la demo sin MySQL levantado. */
-    private static array $tablaEnMemoria = [];
+    private static ?Connection $instance = null;
+
+    /** @var list<string> consultas ejecutadas en esta conexión */
+    private array $consultas = [];
 
     /**
-     * ❌ METODO MAL APLICADO: obtener()
-     *    Devuelve una instancia nueva cada vez que se lo llama.
-     *    Con 40 consultas por request, el sistema abre 40 conexiones.
+     * Constructor privado: la instancia se crea desde getInstance().
      */
-    public static function obtener(): Connection
+    private function __construct() {}
+
+    /**
+     * Devuelve la única instancia de la conexión.
+     */
+    public static function getInstance(): Connection
     {
-        return new Connection();
+        return self::$instance ??= new Connection();
     }
 
-    /*
-     * ✅ FORMA CORRECTA — Singleton:
+    /**
+     * Ejecuta una consulta.
      *
-     * private static ?Connection $instance = null;
-     *
-     * private function __construct(private PDO $pdo) {}
-     *
-     * public static function getInstance(array $config): Connection
-     * {
-     *     if (self::$instance === null) {
-     *         $dsn = "mysql:host={$config['host']};dbname={$config['name']};charset=utf8mb4";
-     *         self::$instance = new Connection(
-     *             new PDO($dsn, $config['user'], $config['pass'], [
-     *                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-     *             ])
-     *         );
-     *     }
-     *     return self::$instance;
-     * }
-     *
-     * Ejercicio: por que el constructor tiene que ser private?
-     * Respuesta: para que nadie pueda hacer new Connection() desde afuera
-     * y romper la garantia de instancia unica.
+     * @throws InvalidArgumentException si la consulta viene vacía
      */
-
     public function ejecutar(string $sql): void
     {
-        try {
-            self::$tablaEnMemoria[] = $sql;
-        } catch (Throwable $e) {
-            // ❌ MAL APLICADO: la excepcion se traga y el sistema sigue.
-            //    El pedido "se guardo" aunque no se guardo nada.
-            //    ✅ Loguear y relanzar: throw new RuntimeException('...', 0, $e);
+        if (trim($sql) === '') {
+            throw new InvalidArgumentException('La consulta no puede estar vacia');
         }
+
+        $this->consultas[] = $sql;
     }
 
+    /**
+     * @return list<string>
+     */
     public function consultas(): array
     {
-        return self::$tablaEnMemoria;
+        return $this->consultas;
+    }
+
+    /**
+     * Descarta la instancia única.
+     *
+     * Existe para las pruebas: el estado de un Singleton es global y cada
+     * test necesita empezar limpio. En la aplicación no debería usarse.
+     */
+    public static function reset(): void
+    {
+        self::$instance = null;
     }
 }
