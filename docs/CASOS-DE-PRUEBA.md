@@ -46,6 +46,15 @@ Salida esperada al final: `OK (34 tests, 44 assertions)`.
 La integración continua ejecuta exactamente los pasos 2 y 3 en GitHub Actions
 (`.github/workflows/ci.yml`) sobre PHP 8.2 y 8.4.
 
+La misma suite se puede correr dentro del contenedor (PHP 8.2) para
+reproducir el CI localmente:
+
+```bash
+docker compose exec app php vendor/bin/phpunit
+```
+
+El paso a paso completo está en `docs/GUIA-EJECUCION.md`.
+
 ---
 
 ## 3. Convenciones

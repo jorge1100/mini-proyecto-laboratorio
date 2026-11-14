@@ -101,6 +101,9 @@ Cada `push` y cada Pull Request disparan el workflow de GitHub Actions
 (`.github/workflows/ci.yml`), que en PHP 8.2 y 8.4 instala dependencias,
 corre el lint y ejecuta las pruebas.
 
+El paso a paso completo —levantar la app, correr la suite en 8.2 y 8.4,
+publicar el PR— está en `docs/GUIA-EJECUCION.md`.
+
 ---
 
 ## 6. Configuración local (sin credenciales versionadas)
@@ -150,6 +153,7 @@ mini-proyecto-laboratorio/
 │   ├── MAPA-DE-DEUDAS.md      mapa de deudas de la clase práctica
 │   ├── DEUDA-TECNICA.md       diagnóstico con evidencia
 │   ├── CASOS-DE-PRUEBA.md     casos de prueba documentados
+│   ├── GUIA-EJECUCION.md      cómo ejecutar y verificar todo
 │   └── DOCKER.md              guía de Docker
 └── .github/
     ├── PULL_REQUEST_TEMPLATE.md

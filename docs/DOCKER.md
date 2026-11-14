@@ -76,3 +76,6 @@ Las credenciales salen de `docker-compose.yml` → `environment:` y se leen en
 | Puerto 8080 ocupado | Otro Apache/XAMPP | Cambiá a `"8081:80"` en `docker-compose.yml` o apagá XAMPP |
 | Cambios no se ven | Navegador cacheó | Recarga fuerte Ctrl+Shift+R |
 | `db` unhealthy | Primera descarga de `mysql:8.0` lenta | Esperá 30s, `docker compose logs db` |
+
+> Para correr las pruebas dentro del contenedor (PHP 8.2, la misma del CI)
+> y el resto del flujo de verificación, ver `docs/GUIA-EJECUCION.md`.
