@@ -17,6 +17,7 @@ Se prueban **las cuatro funcionalidades que el grupo ya refactorizó**:
 | Creación y envío de notificaciones | Factory Method | `src/Notifications/*` |
 | Generación y composición de reportes | Decorator | `src/Reports/*` |
 | Adaptación del sistema heredado | Adapter | `src/Legacy/LegacyNotifier.php` |
+| Avisos al crear un pedido | Observer | `src/Events/*` |
 
 **Fuera de alcance:** la deuda todavía sembrada (Singleton, Repository,
 Observer, Facade, MVC) y los flujos de HTTP/HTML, que no son código
@@ -41,7 +42,7 @@ composer lint
 composer test
 ```
 
-Salida esperada al final: `OK (34 tests, 44 assertions)`.
+Salida esperada al final: `OK (43 tests, 55 assertions)`.
 
 La integración continua ejecuta exactamente los pasos 2 y 3 en GitHub Actions
 (`.github/workflows/ci.yml`) sobre PHP 8.2 y 8.4.
@@ -135,6 +136,20 @@ El paso a paso completo está en `docs/GUIA-EJECUCION.md`.
 | CN-10 | Si el proveedor lanza, el adaptador propaga | Autoloader cargado | `LegacyNotifier` que lanza `RuntimeException('El proveedor esta caido')` | Llamar `send('Pedido 1 creado')` | Se propaga `RuntimeException` con el mensaje `El proveedor esta caido` | Negativo |
 | CN-11 | Rechaza una dependencia que no es `LegacyNotifier` | Autoloader cargado | Objeto `stdClass` | Instanciar `LegacyNotifierAdapter(new stdClass())` | `TypeError` | Negativo |
 
+### F7. Avisos al crear un pedido (Observer)
+
+| ID | Descripción | Precondiciones | Datos de entrada | Pasos | Resultado esperado | Tipo |
+|---|---|---|---|---|---|---|
+| CP-24 | El observador suscrito recibe el pedido | Autoloader cargado | Observador espía, `Order(1, 'Juan Perez', 15000, 'obra_social')` | Suscribir el observador en `OrderSubject` y llamar `notify($order)` | El observador recibe exactamente el mismo objeto `Order` | Positivo |
+| CP-25 | Todos los observadores suscritos reciben el aviso | Autoloader cargado | Dos observadores espía | Suscribir ambos y llamar `notify($order)` | Ambos reciben el pedido | Positivo |
+| CP-26 | El aviso por SMS se agrega sin tocar el sujeto | Autoloader cargado | `SmsObserver`, `Order(7, 'Ana Gomez', 22000, 'particular')` | Suscribir `SmsObserver` en un `OrderSubject` nuevo y llamar `notify()` | La salida contiene `[OBSERVER-SMS] Pedido 7 creado` | Positivo |
+| CP-27 | El observador de email escribe su aviso | Autoloader cargado | `EmailObserver`, `Order(3, 'Ana Gomez', 22000, 'particular')` | Llamar `update($order)` y capturar la salida | La salida contiene `[OBSERVER-EMAIL] Pedido 3 creado` | Positivo |
+| CP-28 | El observador de SMS escribe su aviso | Autoloader cargado | `SmsObserver`, `Order(4, 'Luis Diaz', 9000, 'jubilado')` | Llamar `update($order)` y capturar la salida | La salida contiene `[OBSERVER-SMS] Pedido 4 creado` | Positivo |
+| CP-29 | El observador de dashboard escribe su aviso | Autoloader cargado | `DashboardObserver`, `Order(5, 'Maria Lopez', 12000, 'prepaga')` | Llamar `update($order)` y capturar la salida | La salida contiene `[DASHBOARD] actualizado para el pedido 5` | Positivo |
+| CN-12 | Un observador que falla no impide el aviso a los demás | Autoloader cargado | Observador que lanza `RuntimeException('El aviso cayo')` + un observador sano | Suscribir ambos y llamar `notify($order)` | Se propaga `RuntimeException` **y** el observador sano también recibió el pedido | Negativo |
+| CN-13 | El mismo observador suscrito dos veces recibe dos avisos | Autoloader cargado | Un observador espía suscrito dos veces | Suscribirlo dos veces y llamar `notify($order)` | El observador registra 2 avisos: el sujeto no deduplica | Negativo |
+| CN-14 | Un observador no suscrito no recibe el aviso | Autoloader cargado | Observador espía sin suscribir | Crear el `OrderSubject` y llamar `notify($order)` sin suscribir | El observador no registra ningún aviso | Negativo |
+
 ---
 
 ## 5. Resumen por funcionalidad
@@ -147,7 +162,8 @@ El paso a paso completo está en `docs/GUIA-EJECUCION.md`.
 | F4. Envío de notificaciones (Sender) | 3 | 1 | 4 |
 | F5. Reportes y decoradores (Decorator) | 6 | 2 | 8 |
 | F6. Adaptación del heredado (Adapter) | 3 | 2 | 5 |
-| **Total** | **23** | **11** | **34** |
+| F7. Avisos al crear un pedido (Observer) | 6 | 3 | 9 |
+| **Total** | **29** | **14** | **43** |
 
 ---
 
@@ -189,6 +205,15 @@ El paso a paso completo está en `docs/GUIA-EJECUCION.md`.
 | CP-23 | `Legacy/LegacyNotifierAdapterTest::testAdapterOutputsLegacyFormat` |
 | CN-10 | `Legacy/LegacyNotifierAdapterTest::testAdapterPropagatesLegacyException` |
 | CN-11 | `Legacy/LegacyNotifierAdapterTest::testAdapterRejectsDependencyThatIsNotLegacyNotifier` |
+| CP-24 | `Events/OrderSubjectTest::testNotifiesSubscribedObserverWithTheOrder` |
+| CP-25 | `Events/OrderSubjectTest::testNotifiesAllObserversInSubscriptionOrder` |
+| CP-26 | `Events/OrderSubjectTest::testSmsObserverIsAddedWithoutTouchingTheSubject` |
+| CP-27 | `Events/OrderObserverOutputTest::testEmailObserverWritesItsNotice` |
+| CP-28 | `Events/OrderObserverOutputTest::testSmsObserverWritesItsNotice` |
+| CP-29 | `Events/OrderObserverOutputTest::testDashboardObserverWritesItsNotice` |
+| CN-12 | `Events/OrderSubjectTest::testFailingObserverDoesNotStopTheOthersAndTheErrorIsRethrown` |
+| CN-13 | `Events/OrderSubjectTest::testSameObserverSubscribedTwiceReceivesTwoNotices` |
+| CN-14 | `Events/OrderSubjectTest::testDoesNotNotifyObserversThatWereNotSubscribed` |
 
 ---
 

@@ -170,6 +170,7 @@ mini-proyecto-laboratorio/
 | Factory Method | Creacional | `src/Notifications/NotificationFactory.php` | `feat/patron-factory` |
 | Decorator | Estructural | `src/Reports/*Decorator.php` | `feat/patron-decorator` |
 | Adapter | Estructural | `src/Legacy/LegacyNotifierAdapter.php` | `feat/patron-adapter` |
+| Observer | Comportamiento | `src/Events/OrderSubject.php` | `feat/patron-observer` |
 
 Cada patrón tiene su rama y su commit con la convención
 `feat:` / `refactor:`. Ver `docs/DEUDA-TECNICA.md` para la justificación y

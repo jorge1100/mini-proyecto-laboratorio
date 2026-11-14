@@ -37,4 +37,23 @@ Cambiarlo al 25% requiere tocar **1 archivo**.
 | Strategy | `feat/patron-strategy` | Integrado en `main` |
 | Factory | `feat/patron-factory` | Integrado en `main` |
 | Decorator | `feat/patron-decorator` | Integrado en `main` |
-| Adapter | `feat/patron-adapter` (este commit) | Integrado en `main` |
+| Adapter | `feat/patron-adapter` | Integrado en `main` |
+| Observer | `feat/patron-observer` | Integrado en `main` |
+
+## Evidencia de la deudaObserver pagada
+
+Síntoma original: `src/Events/OrderEvents.php:20-32` (`pedidoCreado()`) llamaba
+a `EmailNotification` y `SmsNotification` **por nombre de clase**, encadenadas.
+Consecuencia directa: agregar un aviso obligaba a modificar esa clase, y si
+uno fallaba, los siguientes no se ejecutaban.
+
+Solución aplicada:
+
+- `src/Events/OrderObserver.php` — interfaz del observador.
+- `src/Events/OrderSubject.php` — sujeto con colección de interfaces.
+- `src/Events/EmailObserver.php`, `SmsObserver.php`, `DashboardObserver.php` —
+  avisos intercambiables.
+- `src/Events/OrderEvents.php` — **eliminado**: no queda código viejo.
+
+Agregar un aviso nuevo es agregar una clase y suscribirla. `OrderSubject` no
+se tocó (ejercicio 5 del TP).
