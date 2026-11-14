@@ -22,10 +22,12 @@ Se prueban **las cuatro funcionalidades que el grupo ya refactorizó**:
 | Guardado y consulta de pedidos | Repository | `src/Repositories/*` |
 | Orquestación del pedido completo | Facade | `src/Services/OrderFacade.php` |
 | Calculador según el tipo de paciente | Factory Method | `src/Pricing/PriceCalculatorFactory.php` |
+| Renderizado de vistas y escapado de la salida | MVC | `src/Views/View.php`, `views/*` |
+| Orquestación de la entrada y la respuesta | MVC | `src/Controllers/OrderController.php` |
 
-**Fuera de alcance:** la deuda todavía sembrada (Singleton y MVC: el
-controlador y la vista) y los flujos de HTTP/HTML, que no son código
-refactorizado y requerirían dobles de base de datos y salida web.
+**Fuera de alcance:** la deuda todavía sembrada (Singleton) y los flujos de
+HTTP/HTML, que no son código refactorizado y requerirían dobles de base de
+datos y salida web.
 
 Las pruebas son **unitarias**: no usan MySQL, ni servidor de mail, ni el
 navegador. Solo cargan las clases con el autoloader de Composer y verifican el
@@ -46,7 +48,7 @@ composer lint
 composer test
 ```
 
-Salida esperada al final: `OK (66 tests, 98 assertions)`.
+Salida esperada al final: `OK (76 tests, 121 assertions)`.
 
 La integración continua ejecuta exactamente los pasos 2 y 3 en GitHub Actions
 (`.github/workflows/ci.yml`) sobre PHP 8.2 y 8.4.
@@ -214,7 +216,9 @@ El paso a paso completo está en `docs/GUIA-EJECUCION.md`.
 | F9. Repositorio y datos de demo | 3 | 3 | 6 |
 | F10. Fachada de pedidos | 4 | 2 | 6 |
 | F11. Fábrica de calculadores | 4 | 2 | 6 |
-| **Total** | **41** | **25** | **66** |
+| F12. Renderizado de vistas | 3 | 2 | 5 |
+| F13. Controlador de pedidos (MVC) | 3 | 2 | 5 |
+| **Total** | **47** | **29** | **76** |
 
 ---
 
@@ -288,6 +292,36 @@ El paso a paso completo está en `docs/GUIA-EJECUCION.md`.
 | CP-41 | `Pricing/PriceCalculatorFactoryTest::testPrepagaGetsThePrepaidStrategy` |
 | CN-24 | `Pricing/PriceCalculatorFactoryTest::testRejectsAnUnsupportedPatientType` |
 | CN-25 | `Pricing/PriceCalculatorFactoryTest::testPatientTypeIsCaseSensitive` |
+| CP-42 | `Views/ViewTest::testRendersTheTemplateWithTheGivenData` |
+| CP-43 | `Views/ViewTest::testOrdersViewShowsTheTotalsItReceives` |
+| CP-44 | `Views/ViewTest::testEscapeEscapesHtmlSpecialCharacters` |
+| CN-26 | `Views/ViewTest::testThrowsWhenTheTemplateDoesNotExist` |
+| CN-27 | `Views/ViewTest::testOrdersViewEscapesThePatientName` |
+| CP-45 | `Controllers/OrderControllerTest::testCreateReturnsTheCreatedOrder` |
+| CP-46 | `Controllers/OrderControllerTest::testIndexReturnsTheOrdersTable` |
+| CP-47 | `Controllers/OrderControllerTest::testReportReturnsTheDecoratedReport` |
+| CN-28 | `Controllers/OrderControllerTest::testCreateReturnsTheErrorViewForAnInvalidAmount` |
+| CN-29 | `Controllers/OrderControllerTest::testCreateReturnsTheErrorViewForAnUnsupportedType` |
+
+### F12. Renderizado de vistas
+
+| ID | Descripción | Precondiciones | Datos de entrada | Pasos | Resultado esperado | Tipo |
+|---|---|---|---|---|---|---|
+| CP-42 | Renderiza la plantilla con los datos recibidos | Autoloader cargado | Plantilla `pedido-creado` con paciente y total | `View::render('pedido-creado', $datos)` | El HTML contiene `<h1>Pedido creado</h1>`, el paciente, el total y el reporte | Positivo |
+| CP-43 | La vista de pedidos muestra los totales que recibe | Autoloader cargado | Un pedido con total `10500.0` | `View::render('orders', ['pedidos' => [...]])` | El HTML contiene `10500` y el nombre del paciente | Positivo |
+| CP-44 | `escape()` escapa los caracteres especiales de HTML | Autoloader cargado | `<script>alert("xss")</script>` | `View::escape($valor)` | Devuelve `&lt;script&gt;...` sin `<script>` | Positivo |
+| CN-26 | Una plantilla inexistente lanza un error | Autoloader cargado | Nombre de vista `inexistente` | `View::render('inexistente')` | `RuntimeException` con mensaje `No existe la vista: inexistente` | Negativo |
+| CN-27 | La vista escapa el nombre del paciente (XSS) | Autoloader cargado | Paciente `<script>alert("xss")</script>` | Renderizar la vista `orders` | El HTML **no** contiene `<script>`; sí `&lt;script&gt;` | Negativo |
+
+### F13. Controlador de pedidos (MVC)
+
+| ID | Descripción | Precondiciones | Datos de entrada | Pasos | Resultado esperado | Tipo |
+|---|---|---|---|---|---|---|
+| CP-45 | `create()` devuelve el HTML del pedido creado | Autoloader cargado | `id=5`, `paciente=Ana Gomez`, `monto=22000`, `tipo=particular` | `OrderController::create()` | El HTML contiene `<h1>Pedido creado</h1>`, `Ana Gomez` y `22000` | Positivo |
+| CP-46 | `index()` devuelve la tabla de pedidos | Autoloader cargado | Repositorio con los 2 pedidos de demostración | `OrderController::index()` | El HTML contiene `<h1>Pedidos</h1>`, `Juan Perez` y `10500` | Positivo |
+| CP-47 | `report()` devuelve el reporte con decoradores | Autoloader cargado | Contenido `Pedidos del dia` | `OrderController::report()` | `Reporte: Pedidos del dia + firma digital + PDF + marca de agua` | Positivo |
+| CN-28 | `create()` con un importe inválido devuelve la vista de error | Autoloader cargado | `monto=-5` | `OrderController::create()` | El HTML contiene `<h1>Pedido rechazado</h1>` y el mensaje del error | Negativo |
+| CN-29 | `create()` con un tipo no soportado devuelve la vista de error | Autoloader cargado | `tipo=xyz` | `OrderController::create()` | El HTML contiene `<h1>Pedido rechazado</h1>` y `no soportado` | Negativo |
 
 ---
 

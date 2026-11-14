@@ -173,6 +173,7 @@ mini-proyecto-laboratorio/
 | Observer | Comportamiento | `src/Events/OrderSubject.php` | `feat/patron-observer` |
 | Facade | Estructural | `src/Services/OrderFacade.php` | `feat/patron-facade` |
 | Repository | Datos | `src/Repositories/OrderRepository.php` | `feat/patron-facade` |
+| MVC + SRP | Arquitectónico | `src/Controllers/OrderController.php`, `src/Views/View.php` | `feat/patron-mvc` |
 
 Cada patrón tiene su rama y su commit con la convención
 `feat:` / `refactor:`. Ver `docs/DEUDA-TECNICA.md` para la justificación y

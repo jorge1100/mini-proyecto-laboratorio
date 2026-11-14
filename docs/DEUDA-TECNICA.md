@@ -41,6 +41,7 @@ Cambiarlo al 25% requiere tocar **1 archivo**.
 | Observer | `feat/patron-observer` | Integrado en `main` |
 | Facade | `feat/patron-facade` | Integrado en `main` |
 | Repository | `feat/patron-facade` | Integrado en `main` |
+| MVC + SRP | `feat/patron-mvc` | Integrado en `main` |
 
 ## Evidencia de la deudaObserver pagada
 
