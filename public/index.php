@@ -29,8 +29,30 @@ define('DB_USER', $config['user'] ?? 'root');
 define('DB_PASS', $config['pass'] ?? '');
 define('DB_PORT', $config['port'] ?? '3306');
 
-// 3. Controlador y ruteo por tabla de rutas (abierto a extensión).
-$controller = new OrderController();
+// 3. Composición: se arman las dependencias y se inyectan.
+//    El punto de entrada es el único lugar que conoce las clases concretas.
+$conexion   = Connection::obtener();
+$repository = new OrderRepository($conexion);
+$calculators = new PriceCalculatorFactory();
+
+// Avisos al crear un pedido (Observer).
+$eventos = new OrderSubject();
+$eventos->subscribe(new EmailObserver());
+$eventos->subscribe(new SmsObserver());
+$eventos->subscribe(new DashboardObserver());
+
+// Fachada: coordina los servicios cohesivos.
+$facade = new OrderFacade(
+    $calculators,
+    $repository,
+    $eventos,
+    new NotificationSender()
+);
+
+// Datos de demostración (mismo camino que un pedido real).
+(new DemoOrderSeeder($repository, $calculators))->seed();
+
+$controller = new OrderController($facade);
 
 $rutas = [
     'crear'   => fn() => $controller->create(),
