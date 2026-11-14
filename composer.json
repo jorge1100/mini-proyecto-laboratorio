@@ -20,7 +20,7 @@
     },
     "scripts": {
         "lint": "find src tests public -type f -name '*.php' -print0 | xargs -0 -n1 -r php -l",
-        "test": "phpunit --colors=never"
+        "test": "@dump-autoload && phpunit --colors=never"
     },
     "config": {
         "optimize-autoloader": true
