@@ -23,6 +23,20 @@ Diagnóstico de la deuda encontrada en el proyecto, con evidencia concreta
 | 14 | Ruteo resuelto con cadena de `if` | `public/index.php:62-72` | **Proceso** (OCP en código) | Tabla de rutas | Un mapa crece; hay que mantenerlo actualizado |
 | 15 | Todos los commits del mismo autor / un solo commit inicial invalida la entrega | historial del repositorio (Unidad 1) | **Proceso** (colaboración) | Flujo de ramas + PR + revisión cruzada | Más ceremonia; requiere disciplina del equipo |
 
+## Consecuencia asumida de cada patrón aplicado
+
+| Patrón | Consecuencia asumida |
+|---|---|
+| Strategy | Se agregan 5 clases (interfaz + 4 estrategias) por un `switch` de 10 líneas. No se justifica cuando el algoritmo no cambia. |
+| Factory Method | La fábrica sigue siendo el único lugar que conoce las clases concretas: agregar un canal exige tocarla. |
+| Decorator | Más archivos (N decoradores) y **el orden de encadenado importa**: el mismo conjunto en otro orden da otro resultado. |
+| Adapter | Una capa extra de indirección; si el proveedor cambia `sendMessage()` por `dispatch()`, se toca solo el adapter. |
+| Observer | Se pierde trazabilidad: leyendo el pedido ya no se ve quién se enteró del evento. Además el sujeto no deduplica observadores. |
+| Facade | La fachada puede convertirse en la nueva "clase que hace de todo" si no se cuida. Por eso no tiene `new` adentro y delega en servicios cohesivos. |
+| Repository | El modelo queda anémico y el wiring crece: la composición de dependencias queda en el punto de entrada. |
+| MVC | Más archivos y capas, y hay que mantener la disciplina: si una vista vuelve a calcular o a consultar la base, la deuda vuelve. |
+| Singleton | Estado global compartido: el estado de la conexión es único en el proceso y hay que reiniciarlo entre tests (`Connection::reset()`). |
+
 ## Métrica del proyecto
 
 El descuento de obra social (`0.7`) aparecía en **5 archivos**.
@@ -42,6 +56,7 @@ Cambiarlo al 25% requiere tocar **1 archivo**.
 | Facade | `feat/patron-facade` | Integrado en `main` |
 | Repository | `feat/patron-facade` | Integrado en `main` |
 | MVC + SRP | `feat/patron-mvc` | Integrado en `main` |
+| Singleton | `feat/patron-singleton` | Integrado en `main` |
 
 ## Evidencia de la deudaObserver pagada
 

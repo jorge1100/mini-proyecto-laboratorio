@@ -24,10 +24,10 @@ Se prueban **las cuatro funcionalidades que el grupo ya refactorizó**:
 | Calculador según el tipo de paciente | Factory Method | `src/Pricing/PriceCalculatorFactory.php` |
 | Renderizado de vistas y escapado de la salida | MVC | `src/Views/View.php`, `views/*` |
 | Orquestación de la entrada y la respuesta | MVC | `src/Controllers/OrderController.php` |
+| Instancia única de conexión | Singleton | `src/Database/Connection.php` |
 
-**Fuera de alcance:** la deuda todavía sembrada (Singleton) y los flujos de
-HTTP/HTML, que no son código refactorizado y requerirían dobles de base de
-datos y salida web.
+**Fuera de alcance:** los flujos de HTTP/HTML de punta a punta, que no son
+código refactorizado y requerirían dobles de base de datos y salida web.
 
 Las pruebas son **unitarias**: no usan MySQL, ni servidor de mail, ni el
 navegador. Solo cargan las clases con el autoloader de Composer y verifican el
@@ -48,7 +48,7 @@ composer lint
 composer test
 ```
 
-Salida esperada al final: `OK (76 tests, 121 assertions)`.
+Salida esperada al final: `OK (81 tests, 128 assertions)`.
 
 La integración continua ejecuta exactamente los pasos 2 y 3 en GitHub Actions
 (`.github/workflows/ci.yml`) sobre PHP 8.2 y 8.4.
@@ -218,7 +218,8 @@ El paso a paso completo está en `docs/GUIA-EJECUCION.md`.
 | F11. Fábrica de calculadores | 4 | 2 | 6 |
 | F12. Renderizado de vistas | 3 | 2 | 5 |
 | F13. Controlador de pedidos (MVC) | 3 | 2 | 5 |
-| **Total** | **47** | **29** | **76** |
+| F14. Conexión a la base (Singleton) | 2 | 3 | 5 |
+| **Total** | **49** | **32** | **81** |
 
 ---
 
@@ -302,6 +303,21 @@ El paso a paso completo está en `docs/GUIA-EJECUCION.md`.
 | CP-47 | `Controllers/OrderControllerTest::testReportReturnsTheDecoratedReport` |
 | CN-28 | `Controllers/OrderControllerTest::testCreateReturnsTheErrorViewForAnInvalidAmount` |
 | CN-29 | `Controllers/OrderControllerTest::testCreateReturnsTheErrorViewForAnUnsupportedType` |
+| CP-48 | `Database/ConnectionTest::testAlwaysReturnsTheSameInstance` |
+| CP-49 | `Database/ConnectionTest::testKeepsTheExecutedQueries` |
+| CN-30 | `Database/ConnectionTest::testConstructorIsPrivate` |
+| CN-31 | `Database/ConnectionTest::testRejectsAnEmptyQuery` |
+| CN-32 | `Database/ConnectionTest::testResetDiscardsTheInstance` |
+
+### F14. Conexión a la base (Singleton)
+
+| ID | Descripción | Precondiciones | Datos de entrada | Pasos | Resultado esperado | Tipo |
+|---|---|---|---|---|---|---|
+| CP-48 | Siempre devuelve la misma instancia | Autoloader cargado | — | Pedir la conexión dos veces | Las dos referencias apuntan al mismo objeto | Positivo |
+| CP-49 | Guarda las consultas ejecutadas | Autoloader cargado | `SELECT 1` y `SELECT 2` | `ejecutar()` dos veces y llamar `consultas()` | Devuelve `['SELECT 1', 'SELECT 2']` | Positivo |
+| CN-30 | El constructor es privado | Autoloader cargado | Clase `Connection` | Inspeccionar el constructor por reflexión | Es privado: nadie puede hacer `new Connection()` | Negativo |
+| CN-31 | Una consulta vacía lanza en vez de tragarse el error | Autoloader cargado | Consulta `'   '` | `ejecutar('   ')` | `InvalidArgumentException` con mensaje `La consulta no puede estar vacia` | Negativo |
+| CN-32 | `reset()` descarta la instancia | Autoloader cargado | Una conexión ya creada | Pedir la conexión, llamar `reset()` y volver a pedirla | Se obtiene una instancia distinta | Negativo |
 
 ### F12. Renderizado de vistas
 

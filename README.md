@@ -174,6 +174,7 @@ mini-proyecto-laboratorio/
 | Facade | Estructural | `src/Services/OrderFacade.php` | `feat/patron-facade` |
 | Repository | Datos | `src/Repositories/OrderRepository.php` | `feat/patron-facade` |
 | MVC + SRP | Arquitectónico | `src/Controllers/OrderController.php`, `src/Views/View.php` | `feat/patron-mvc` |
+| Singleton | Creacional | `src/Database/Connection.php` | `feat/patron-singleton` |
 
 Cada patrón tiene su rama y su commit con la convención
 `feat:` / `refactor:`. Ver `docs/DEUDA-TECNICA.md` para la justificación y
@@ -233,3 +234,13 @@ views/orders.php
 
 Después del refactor con Strategy, el valor vive en un único lugar:
 `src/Pricing/InsuranceStrategy.php`. Esa diferencia es el trabajo hecho.
+
+La pregunta de cierre de la consigna, respondida con el código actual:
+
+| Pregunta | Antes | Ahora |
+|---|---|---|
+| ¿Cuántos archivos hay que tocar para cambiar el descuento de obra social? | 5 | **1** (`src/Pricing/InsuranceStrategy.php`) |
+| ¿Cuántos archivos hay que tocar para agregar un tipo de paciente nuevo? | El `switch` + todos los que repetían el `if` | **2**: la estrategia nueva y una línea en `src/Pricing/PriceCalculatorFactory.php` |
+
+El `0.7` no aparece más en ningún archivo del código: ni en el modelo, ni en
+la vista, ni en el controlador, ni en el servicio.

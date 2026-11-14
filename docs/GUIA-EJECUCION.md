@@ -113,7 +113,7 @@ composer test        # ejecuta la suite
 Salida final esperada:
 
 ```
-OK (34 tests, 44 assertions)
+OK (81 tests, 128 assertions)
 ```
 
 ### 4.2 Dentro del contenedor (PHP 8.2, la misma del CI)
@@ -122,18 +122,29 @@ OK (34 tests, 44 assertions)
 docker compose exec app php vendor/bin/phpunit
 ```
 
-También devuelve `OK (34 tests, 44 assertions)`. Esto permite **verificar la
+También devuelve `OK (81 tests, 128 assertions)`. Esto permite **verificar la
 compatibilidad con 8.2 antes de que corra GitHub Actions**.
 
 ### 4.3 Qué cubre la suite
 
-| Suite (`tests/Unit/`) | Patrón | Casos |
+| Suite (`tests/Unit/`) | Patrón | Tests |
 |---|---|---|
 | `Pricing/PriceCalculatorTest.php` | Strategy | 11 |
-| `Notifications/NotificationFactoryTest.php` | Factory Method | 4 |
+| `Pricing/PriceCalculatorFactoryTest.php` | Factory Method | 6 |
+| `Notifications/NotificationFactoryTest.php` | Factory Method | 6 |
 | `Notifications/NotificationSenderTest.php` | Factory Method | 4 |
 | `Reports/ReportDecoratorTest.php` | Decorator | 8 |
 | `Legacy/LegacyNotifierAdapterTest.php` | Adapter | 5 |
+| `Events/OrderSubjectTest.php` | Observer | 6 |
+| `Events/OrderObserverOutputTest.php` | Observer | 3 |
+| `Models/OrderTest.php` | Modelo con invariantes | 5 |
+| `Repositories/OrderRepositoryTest.php` | Repository | 5 |
+| `Repositories/DemoOrderSeederTest.php` | Repository | 1 |
+| `Services/OrderFacadeTest.php` | Facade | 6 |
+| `Controllers/OrderControllerTest.php` | MVC | 5 |
+| `Views/ViewTest.php` | MVC | 5 |
+| `Database/ConnectionTest.php` | Singleton | 5 |
+| **Total** | | **81** |
 
 El detalle de cada caso (identificador, precondiciones, datos de entrada,
 pasos y resultado esperado) está en `docs/CASOS-DE-PRUEBA.md`.
@@ -232,7 +243,7 @@ git branch -d feat/tests-ci
 
 ## 7. Checklist antes de la entrega
 
-- [ ] `composer test` en verde local (34 tests).
+- [ ] `composer test` en verde local (81 tests).
 - [ ] Suite verificada también en PHP 8.2 dentro del contenedor.
 - [ ] `git push origin main` ejecutado: `origin/main` tiene los commits del grupo.
 - [ ] `git push -u origin feat/tests-ci` ejecutado.
