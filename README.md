@@ -171,6 +171,8 @@ mini-proyecto-laboratorio/
 | Decorator | Estructural | `src/Reports/*Decorator.php` | `feat/patron-decorator` |
 | Adapter | Estructural | `src/Legacy/LegacyNotifierAdapter.php` | `feat/patron-adapter` |
 | Observer | Comportamiento | `src/Events/OrderSubject.php` | `feat/patron-observer` |
+| Facade | Estructural | `src/Services/OrderFacade.php` | `feat/patron-facade` |
+| Repository | Datos | `src/Repositories/OrderRepository.php` | `feat/patron-facade` |
 
 Cada patrón tiene su rama y su commit con la convención
 `feat:` / `refactor:`. Ver `docs/DEUDA-TECNICA.md` para la justificación y

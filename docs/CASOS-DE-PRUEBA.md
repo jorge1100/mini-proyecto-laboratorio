@@ -18,9 +18,13 @@ Se prueban **las cuatro funcionalidades que el grupo ya refactorizó**:
 | Generación y composición de reportes | Decorator | `src/Reports/*` |
 | Adaptación del sistema heredado | Adapter | `src/Legacy/LegacyNotifier.php` |
 | Avisos al crear un pedido | Observer | `src/Events/*` |
+| Invariantes del pedido | Modelo con invariantes | `src/Models/Order.php` |
+| Guardado y consulta de pedidos | Repository | `src/Repositories/*` |
+| Orquestación del pedido completo | Facade | `src/Services/OrderFacade.php` |
+| Calculador según el tipo de paciente | Factory Method | `src/Pricing/PriceCalculatorFactory.php` |
 
-**Fuera de alcance:** la deuda todavía sembrada (Singleton, Repository,
-Observer, Facade, MVC) y los flujos de HTTP/HTML, que no son código
+**Fuera de alcance:** la deuda todavía sembrada (Singleton y MVC: el
+controlador y la vista) y los flujos de HTTP/HTML, que no son código
 refactorizado y requerirían dobles de base de datos y salida web.
 
 Las pruebas son **unitarias**: no usan MySQL, ni servidor de mail, ni el
@@ -42,7 +46,7 @@ composer lint
 composer test
 ```
 
-Salida esperada al final: `OK (43 tests, 55 assertions)`.
+Salida esperada al final: `OK (66 tests, 98 assertions)`.
 
 La integración continua ejecuta exactamente los pasos 2 y 3 en GitHub Actions
 (`.github/workflows/ci.yml`) sobre PHP 8.2 y 8.4.
@@ -150,6 +154,49 @@ El paso a paso completo está en `docs/GUIA-EJECUCION.md`.
 | CN-13 | El mismo observador suscrito dos veces recibe dos avisos | Autoloader cargado | Un observador espía suscrito dos veces | Suscribirlo dos veces y llamar `notify($order)` | El observador registra 2 avisos: el sujeto no deduplica | Negativo |
 | CN-14 | Un observador no suscrito no recibe el aviso | Autoloader cargado | Observador espía sin suscribir | Crear el `OrderSubject` y llamar `notify($order)` sin suscribir | El observador no registra ningún aviso | Negativo |
 
+### F8. Modelo Order (invariantes del pedido)
+
+| ID | Descripción | Precondiciones | Datos de entrada | Pasos | Resultado esperado | Tipo |
+|---|---|---|---|---|---|---|
+| CP-30 | El modelo conserva los datos del pedido | Autoloader cargado | `Order(1, 'Juan Perez', 15000.0, 'obra_social')` | Construir el pedido y leer sus propiedades | `id=1`, `patient='Juan Perez'`, `amount=15000.0`, `patientType='obra_social'` | Positivo |
+| CN-15 | Rechaza un id no positivo | Autoloader cargado | `Order(0, 'Juan Perez', 15000.0, 'particular')` | Construir el pedido | `InvalidArgumentException` con mensaje `El id del pedido debe ser mayor a cero` | Negativo |
+| CN-16 | Rechaza un paciente vacío | Autoloader cargado | `Order(1, '   ', 15000.0, 'particular')` | Construir el pedido | `InvalidArgumentException` con mensaje `El paciente es obligatorio` | Negativo |
+| CN-17 | Rechaza un importe negativo | Autoloader cargado | `Order(1, 'Juan Perez', -15000.0, 'particular')` | Construir el pedido | `InvalidArgumentException` con mensaje `El importe no puede ser negativo` | Negativo |
+| CN-18 | Rechaza un importe cero | Autoloader cargado | `Order(1, 'Juan Perez', 0.0, 'particular')` | Construir el pedido | `InvalidArgumentException` | Negativo |
+
+### F9. Repositorio de pedidos
+
+| ID | Descripción | Precondiciones | Datos de entrada | Pasos | Resultado esperado | Tipo |
+|---|---|---|---|---|---|---|
+| CP-31 | Guarda el pedido con el total ya calculado | Autoloader cargado | `Order(5, 'Ana Gomez', 22000.0, 'particular')`, total `22000.0` | `save($order, $total)` y luego `find(5)` | El pedido guardado tiene el paciente y el total | Positivo |
+| CP-32 | `all()` devuelve todos los pedidos guardados | Autoloader cargado | Dos pedidos con totales `10500.0` y `22000.0` | Guardar los dos y llamar `all()` | Devuelve 2 pedidos; el primero tiene total `10500.0` | Positivo |
+| CP-33 | Los datos de demostración usan los totales de las estrategias | Autoloader cargado | Datos de demo (obra social y particular) | `DemoOrderSeeder::seed()` | 2 pedidos: `Juan Perez → 10500.0` y `Ana Gomez → 22000.0` | Positivo |
+| CN-19 | `find()` de un id inexistente devuelve null | Autoloader cargado | Id `999` | `find(999)` | `null` | Negativo |
+| CN-20 | Un repositorio vacío no devuelve pedidos | Autoloader cargado | Sin pedidos | `all()` | `[]` | Negativo |
+| CN-21 | El nombre del paciente se escapa en la consulta SQL | Autoloader cargado | Paciente `O'Neil` | `save()` y revisar la consulta ejecutada | La consulta contiene `'O\'Neil'` y **no** `'O'Neil'` | Negativo |
+
+### F10. Fachada de pedidos
+
+| ID | Descripción | Precondiciones | Datos de entrada | Pasos | Resultado esperado | Tipo |
+|---|---|---|---|---|---|---|
+| CP-34 | Devuelve el total calculado por la estrategia | Autoloader cargado | `Order(1, 'Juan Perez', 15000.0, 'obra_social')` | `procesarPedidoCompleto($order)` | `10500.0` | Positivo |
+| CP-35 | Guarda el pedido con el total calculado | Autoloader cargado | `Order(5, 'Ana Gomez', 22000.0, 'particular')` | `procesarPedidoCompleto($order)` y `find(5)` | El repositorio tiene el pedido 5 con total `22000.0` | Positivo |
+| CP-36 | Avisa a los observadores suscritos | Autoloader cargado | Observador espía suscrito al sujeto | `procesarPedidoCompleto($order)` | El observador registra 1 aviso | Positivo |
+| CP-37 | Envía la notificación al paciente | Autoloader cargado | Destino `paciente@mail.com` | `procesarPedidoCompleto($order)` capturando la salida | La salida contiene `[EMAIL] para paciente@mail.com: Pedido 1 por $ 10500` | Positivo |
+| CN-22 | Un tipo de paciente no soportado no guarda el pedido | Autoloader cargado | Tipo `xyz` | `procesarPedidoCompleto($order)` | `InvalidArgumentException` con mensaje `no soportado` y el repositorio queda vacío | Negativo |
+| CN-23 | Si un observador falla, el error se propaga | Autoloader cargado | Observador que lanza `RuntimeException('El aviso cayo')` | `procesarPedidoCompleto($order)` | Se propaga `RuntimeException` | Negativo |
+
+### F11. Fábrica de calculadores por tipo de paciente
+
+| ID | Descripción | Precondiciones | Datos de entrada | Pasos | Resultado esperado | Tipo |
+|---|---|---|---|---|---|---|
+| CP-38 | El paciente particular paga el monto completo | Autoloader cargado | `for('particular')`, monto `22000` | Calcular con el calculador devuelto | `22000.0` | Positivo |
+| CP-39 | La obra social usa la estrategia de seguro | Autoloader cargado | `for('obra_social')`, monto `15000` | Calcular con el calculador devuelto | `10500.0` | Positivo |
+| CP-40 | El jubilado usa la estrategia de jubilado | Autoloader cargado | `for('jubilado')`, monto `15000` | Calcular con el calculador devuelto | `7500.0` | Positivo |
+| CP-41 | El prepaga usa la estrategia de prepaga | Autoloader cargado | `for('prepaga')`, monto `15000` | Calcular con el calculador devuelto | `12750.0` | Positivo |
+| CN-24 | Rechaza un tipo de paciente no soportado | Autoloader cargado | `for('xyz')` | Pedir el calculador | `InvalidArgumentException` con mensaje `Tipo de paciente no soportado: xyz` | Negativo |
+| CN-25 | El tipo de paciente es sensible a mayúsculas | Autoloader cargado | `for('Obra_Social')` | Pedir el calculador | `InvalidArgumentException` | Negativo |
+
 ---
 
 ## 5. Resumen por funcionalidad
@@ -163,7 +210,11 @@ El paso a paso completo está en `docs/GUIA-EJECUCION.md`.
 | F5. Reportes y decoradores (Decorator) | 6 | 2 | 8 |
 | F6. Adaptación del heredado (Adapter) | 3 | 2 | 5 |
 | F7. Avisos al crear un pedido (Observer) | 6 | 3 | 9 |
-| **Total** | **29** | **14** | **43** |
+| F8. Modelo Order (invariantes) | 1 | 4 | 5 |
+| F9. Repositorio y datos de demo | 3 | 3 | 6 |
+| F10. Fachada de pedidos | 4 | 2 | 6 |
+| F11. Fábrica de calculadores | 4 | 2 | 6 |
+| **Total** | **41** | **25** | **66** |
 
 ---
 
@@ -214,6 +265,29 @@ El paso a paso completo está en `docs/GUIA-EJECUCION.md`.
 | CN-12 | `Events/OrderSubjectTest::testFailingObserverDoesNotStopTheOthersAndTheErrorIsRethrown` |
 | CN-13 | `Events/OrderSubjectTest::testSameObserverSubscribedTwiceReceivesTwoNotices` |
 | CN-14 | `Events/OrderSubjectTest::testDoesNotNotifyObserversThatWereNotSubscribed` |
+| CP-30 | `Models/OrderTest::testKeepsTheOrderData` |
+| CN-15 | `Models/OrderTest::testRejectsNonPositiveId` |
+| CN-16 | `Models/OrderTest::testRejectsBlankPatient` |
+| CN-17 | `Models/OrderTest::testRejectsNonPositiveAmount` |
+| CN-18 | `Models/OrderTest::testRejectsZeroAmount` |
+| CP-31 | `Repositories/OrderRepositoryTest::testSavesAndReturnsTheOrderWithItsTotal` |
+| CP-32 | `Repositories/OrderRepositoryTest::testAllReturnsEverySavedOrder` |
+| CP-33 | `Repositories/DemoOrderSeederTest::testSeedsTwoOrdersWithTheTotalsFromTheStrategies` |
+| CN-19 | `Repositories/OrderRepositoryTest::testReturnsNullForAnUnknownId` |
+| CN-20 | `Repositories/OrderRepositoryTest::testReturnsEmptyListWhenNothingWasSaved` |
+| CN-21 | `Repositories/OrderRepositoryTest::testEscapesQuotesInThePatientName` |
+| CP-34 | `Services/OrderFacadeTest::testReturnsTheTotalCalculatedByTheStrategy` |
+| CP-35 | `Services/OrderFacadeTest::testSavesTheOrderWithTheCalculatedTotal` |
+| CP-36 | `Services/OrderFacadeTest::testNotifiesTheObservers` |
+| CP-37 | `Services/OrderFacadeTest::testSendsTheNotification` |
+| CN-22 | `Services/OrderFacadeTest::testRejectsAnUnsupportedTypeAndDoesNotSaveTheOrder` |
+| CN-23 | `Services/OrderFacadeTest::testPropagatesTheErrorOfAFailingObserver` |
+| CP-38 | `Pricing/PriceCalculatorFactoryTest::testParticularPaysTheFullAmount` |
+| CP-39 | `Pricing/PriceCalculatorFactoryTest::testObraSocialGetsTheInsuranceStrategy` |
+| CP-40 | `Pricing/PriceCalculatorFactoryTest::testJubiladoGetsTheRetiredStrategy` |
+| CP-41 | `Pricing/PriceCalculatorFactoryTest::testPrepagaGetsThePrepaidStrategy` |
+| CN-24 | `Pricing/PriceCalculatorFactoryTest::testRejectsAnUnsupportedPatientType` |
+| CN-25 | `Pricing/PriceCalculatorFactoryTest::testPatientTypeIsCaseSensitive` |
 
 ---
 

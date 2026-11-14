@@ -7,13 +7,13 @@ durante la ronda de refactor y la usa como descripción de su Pull Request.
 |---|---|---|---|---|---|---|
 | `public/index.php` | Requires manuales, credenciales, ruteo con `if` | OCP + configuración en código | Autoload + tabla de rutas | | | |
 | `src/Database/Connection.php` | Conexión nueva por consulta, excepción silenciada | Gestión de recursos | Singleton | | | |
-| `src/Models/Order.php` | El modelo persiste y calcula precios | SRP | Repository + Strategy | | | |
+| `src/Models/Order.php` | El modelo persiste y calcula precios | SRP | Repository + Strategy | Grupo 1 | `feat/patron-facade` | #6 |
 | `src/Pricing/PriceCalculator.php` | `switch` con todos los algoritmos, duplicado | OCP + DRY | Strategy | Grupo 1 | `feat/patron-strategy` | #1 |
 | `src/Notifications/NotificationSender.php` | `if` por tipo repetido en 3 archivos | OCP + DIP | Factory | Grupo 2 | `feat/patron-factory` | #2 |
 | `src/Legacy/LegacyNotifier.php` | Clase de terceros modificada + copia y pega | DRY + límites del sistema | Adapter | Grupo 4 | `feat/patron-adapter` | #4 |
 | `src/Reports/ReportGenerator.php` | Banderas booleanas (`boolean trap`) | OCP | Decorator | Grupo 3 | `feat/patron-decorator` | #3 |
 | `src/Events/OrderEvents.php` | Avisos encadenados a clases concretas | DIP | Observer | Grupo 1 | `feat/patron-observer` | #5 |
-| `src/Services/OrderService.php` | Método que hace de todo | SRP | Facade | | | |
+| `src/Services/OrderService.php` | Método que hace de todo | SRP | Facade | Grupo 1 | `feat/patron-facade` | #6 |
 | `src/Controllers/OrderController.php` | SQL + negocio + HTML juntos | SRP + MVC | MVC | | | |
 | `views/orders.php` | Consulta, calcula y no escapa | MVC + seguridad | MVC | | | |
 

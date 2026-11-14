@@ -39,6 +39,8 @@ Cambiarlo al 25% requiere tocar **1 archivo**.
 | Decorator | `feat/patron-decorator` | Integrado en `main` |
 | Adapter | `feat/patron-adapter` | Integrado en `main` |
 | Observer | `feat/patron-observer` | Integrado en `main` |
+| Facade | `feat/patron-facade` | Integrado en `main` |
+| Repository | `feat/patron-facade` | Integrado en `main` |
 
 ## Evidencia de la deudaObserver pagada
 
