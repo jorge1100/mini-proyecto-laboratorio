@@ -27,16 +27,3 @@ class LegacyNotifier
         echo "[LEGACY] {$text}<br>";
     }
 }
-
-/**
- * Adapter: hace que el sistema heredado cumpla nuestro contrato Notification.
- */
-final class LegacyNotifierAdapter implements Notification
-{
-    public function __construct(private LegacyNotifier $legacy) {}
-
-    public function send(string $message): void
-    {
-        $this->legacy->sendMessage($message);
-    }
-}
