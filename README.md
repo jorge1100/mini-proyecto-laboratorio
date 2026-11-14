@@ -135,17 +135,20 @@ mini-proyecto-laboratorio/
 │   ├── index.php              (punto de entrada: autoload + config + rutas)
 │   └── .htaccess
 ├── src/
-│   ├── Database/              Connection (Singleton pendiente)
-│   ├── Models/                Order (Repository + Strategy pendientes)
-│   ├── Pricing/               PricingStrategy + estrategias (Strategy aplicado)
-│   ├── Notifications/         Notification + factory (Factory aplicado)
-│   ├── Legacy/                LegacyNotifier + Adapter (Adapter aplicado)
-│   ├── Reports/               Report + decoradores (Decorator aplicado)
-│   ├── Events/                OrderEvents (Observer pendiente)
-│   ├── Services/              OrderService (Facade pendiente)
-│   └── Controllers/           OrderController (MVC pendiente)
+│   ├── Autoloader.php          (autoload compartido por la app y las pruebas)
+│   ├── Database/              Connection (Singleton aplicado)
+│   ├── Models/                Order (modelo con invariantes)
+│   ├── Pricing/               PricingStrategy + estrategias + fábrica (Strategy)
+│   ├── Notifications/         Notification + factory (Factory)
+│   ├── Legacy/                LegacyNotifier + Adapter (Adapter)
+│   ├── Reports/               Report + decoradores + builder (Decorator)
+│   ├── Events/                OrderSubject + observers (Observer)
+│   ├── Repositories/          OrderRepository + datos de demo (Repository)
+│   ├── Services/              OrderFacade (Facade)
+│   ├── Views/                 View (renderizador de vistas)
+│   └── Controllers/           OrderController (MVC)
 ├── tests/
-│   └── Unit/                  pruebas de Strategy, Factory, Decorator y Adapter
+│   └── Unit/                  81 pruebas de los 9 patrones aplicados
 ├── views/
 │   └── orders.php
 ├── docs/
