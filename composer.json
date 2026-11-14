@@ -8,11 +8,6 @@
     "require-dev": {
         "phpunit/phpunit": "^11.0"
     },
-    "autoload": {
-        "classmap": [
-            "src/"
-        ]
-    },
     "autoload-dev": {
         "classmap": [
             "tests/"
@@ -20,7 +15,7 @@
     },
     "scripts": {
         "lint": "find src tests public -type f -name '*.php' -print0 | xargs -0 -n1 -r php -l",
-        "test": "@dump-autoload && phpunit --colors=never"
+        "test": "phpunit --colors=never"
     },
     "config": {
         "optimize-autoloader": true

@@ -11,25 +11,9 @@
  * ============================================================================
  */
 
-// 1. Autoload: busca el archivo <Clase>.php dentro de src/ (cualquier subdirectorio).
-spl_autoload_register(function (string $class): void {
-    static $map = null;
-    if ($map === null) {
-        $map = [];
-        $base = __DIR__ . '/../src';
-        $iterator = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($base, FilesystemIterator::SKIP_DOTS)
-        );
-        foreach ($iterator as $file) {
-            if ($file->isFile() && $file->getExtension() === 'php') {
-                $map[$file->getBasename('.php')] = $file->getPathname();
-            }
-        }
-    }
-    if (isset($map[$class]) && is_file($map[$class])) {
-        require_once $map[$class];
-    }
-});
+// 1. Autoload: un solo recorrido de clases, compartido con las pruebas.
+require_once __DIR__ . '/../src/Autoloader.php';
+Autoloader::register(__DIR__ . '/../src');
 
 // 2. Configuración externa: nunca versionada. Si no existe el archivo local,
 //    se usa la plantilla con valores vacíos/default.
